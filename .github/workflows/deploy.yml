@@ -1,0 +1,109 @@
+# Push to main → lint + typecheck → build image → deploy to Cloud Run (scales to zero).
+# One-time setup: bash scripts/cloud-run-setup.sh <project> <owner/repo> (see README "Deploy").
+name: Deploy
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: deploy
+  cancel-in-progress: false
+
+env:
+  SERVICE: agent
+  REGION: ${{ vars.GCP_REGION || 'us-central1' }}
+  PROJECT: ${{ vars.GCP_PROJECT }}
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run lint
+      - run: npm run typecheck
+
+  deploy:
+    needs: check
+    # Skipped until the setup script has run and the variables are set.
+    if: vars.GCP_PROJECT != ''
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write # Workload Identity Federation: no service account keys
+    environment:
+      name: production
+      url: ${{ steps.deploy.outputs.url }}
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: google-github-actions/auth@v3
+        with:
+          workload_identity_provider: projects/${{ vars.GCP_PROJECT_NUMBER }}/locations/global/workloadIdentityPools/github/providers/github
+          service_account: agent-deployer@${{ vars.GCP_PROJECT }}.iam.gserviceaccount.com
+
+      - uses: google-github-actions/setup-gcloud@v3
+
+      - name: Build and push image
+        run: |
+          IMAGE=$REGION-docker.pkg.dev/$PROJECT/$SERVICE/$SERVICE:$GITHUB_SHA
+          gcloud auth configure-docker $REGION-docker.pkg.dev --quiet
+          docker build -t "$IMAGE" .
+          docker push "$IMAGE"
+          echo "IMAGE=$IMAGE" >> "$GITHUB_ENV"
+
+      - name: Deploy to Cloud Run
+        id: deploy
+        env:
+          # Optional, from scripts/cloud-run-setup.sh --agent-platform. Empty = feature off.
+          NUXT_GCP_ENGINE: ${{ vars.NUXT_GCP_ENGINE }}
+          NUXT_GCP_SHELL_TEMPLATE: ${{ vars.NUXT_GCP_SHELL_TEMPLATE }}
+          NUXT_GCP_BROWSER_TEMPLATE: ${{ vars.NUXT_GCP_BROWSER_TEMPLATE }}
+          NUXT_MODEL: ${{ vars.NUXT_MODEL }}
+          NUXT_LIVE_MODEL: ${{ vars.NUXT_LIVE_MODEL }}
+          MAX_INSTANCES: ${{ vars.MAX_INSTANCES || '3' }}
+          # Optional Google sign-in: set AUTH_URL to the service URL (after the first deploy) and
+          # create the auth-secret, auth-google-client-id and auth-google-client-secret secrets.
+          AUTH_URL: ${{ vars.AUTH_URL }}
+        run: |
+          RUNTIME_SA=agent-runtime@$PROJECT.iam.gserviceaccount.com
+          SECRETS=NUXT_GEMINI_API_KEY=gemini-api-key:latest
+          {
+            echo "NUXT_GCP_PROJECT: '$PROJECT'"
+            echo "NUXT_GCP_LOCATION: '$REGION'"
+            echo "NUXT_GCP_BUCKET: '$PROJECT-agent-files'"
+            echo "NUXT_GCP_SERVICE_ACCOUNT: '$RUNTIME_SA'"
+            for name in NUXT_GCP_ENGINE NUXT_GCP_SHELL_TEMPLATE NUXT_GCP_BROWSER_TEMPLATE NUXT_MODEL NUXT_LIVE_MODEL; do
+              if [ -n "${!name}" ]; then echo "$name: '${!name}'"; fi
+            done
+            if [ -n "$AUTH_URL" ]; then
+              echo "NUXT_PUBLIC_AUTH: 'true'"
+              echo "BETTER_AUTH_URL: '$AUTH_URL'"
+            fi
+          } > env.yaml
+          if [ -n "$AUTH_URL" ]; then
+            SECRETS=$SECRETS,NUXT_AUTH_SECRET=auth-secret:latest,NUXT_AUTH_GOOGLE_CLIENT_ID=auth-google-client-id:latest,NUXT_AUTH_GOOGLE_CLIENT_SECRET=auth-google-client-secret:latest
+          fi
+          gcloud run deploy "$SERVICE" \
+            --image "$IMAGE" \
+            --region "$REGION" \
+            --service-account "$RUNTIME_SA" \
+            --allow-unauthenticated \
+            --min-instances 0 \
+            --max-instances "$MAX_INSTANCES" \
+            --cpu-boost \
+            --timeout 900 \
+            --env-vars-file env.yaml \
+            --set-secrets "$SECRETS" \
+            --quiet
+          URL=$(gcloud run services describe "$SERVICE" --region "$REGION" --format 'value(status.url)')
+          echo "url=$URL" >> "$GITHUB_OUTPUT"
+          echo "Deployed: $URL" >> "$GITHUB_STEP_SUMMARY"

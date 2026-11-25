@@ -56,8 +56,10 @@ export const chat = ai.defineFlow(
     }
 
     const { text } = await response
+    // Awaited, not fire-and-forget: Cloud Run throttles CPU once the response ends. It only starts
+    // a long-running operation, so it is quick.
     if (features().memory) {
-      memory.remember(userId, [last, { role: 'model', text }]).catch(error => console.error('memory generation failed', error))
+      await memory.remember(userId, [last, { role: 'model', text }]).catch(error => console.error('memory generation failed', error))
     }
     return text
   },

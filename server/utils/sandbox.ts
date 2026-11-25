@@ -12,7 +12,28 @@ export type Chunk = {
 
 type Sandbox = {
   name: string
+  displayName?: string
+  state?: string
   connectionInfo?: { loadBalancerHostname?: string, routingToken?: string }
+}
+
+const DEAD = new Set(['STATE_DEPROVISIONING', 'STATE_TERMINATED', 'STATE_DELETED', 'STATE_STOPPING'])
+const alive = (sandbox?: Sandbox) => !!sandbox && !DEAD.has(sandbox.state ?? '')
+
+/**
+ * Finds the chat's sandbox through the API, so it survives scale to zero and is shared across
+ * Cloud Run instances. Best effort: on any error a new sandbox is created.
+ */
+async function find(key: string): Promise<Sandbox | undefined> {
+  const url = new URL(`${platform()}/${useRuntimeConfig().gcp.engine}/sandboxEnvironments`)
+  url.searchParams.set('filter', `display_name="${key}"`)
+  try {
+    const { sandboxEnvironments = [] } = await gcp<{ sandboxEnvironments?: Sandbox[] }>(url.toString())
+    return sandboxEnvironments.find(sandbox => sandbox.displayName === key && alive(sandbox))
+  }
+  catch (error) {
+    console.error('sandbox lookup failed', error)
+  }
 }
 
 function spec(kind: Kind) {
@@ -34,12 +55,14 @@ export const sandbox = {
     const key = `${kind}:${chatId}`
     const cached = await storage.getItem<string>(key)
     if (cached) {
-      try {
-        return await gcp<Sandbox>(`${platform()}/${cached}`)
-      }
-      catch {
-        await storage.removeItem(key) // expired
-      }
+      const sandbox = await gcp<Sandbox>(`${platform()}/${cached}`).catch(() => undefined)
+      if (alive(sandbox)) return sandbox!
+      await storage.removeItem(key) // expired
+    }
+    const found = await find(key)
+    if (found) {
+      await storage.setItem(key, found.name)
+      return found
     }
     const created = await operation<Sandbox>(`${platform()}/${useRuntimeConfig().gcp.engine}/sandboxEnvironments`, {
       displayName: key,
