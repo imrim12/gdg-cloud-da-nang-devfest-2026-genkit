@@ -3,3 +3,7 @@ node_modules
 .output
 .env
 .git
+.claude
+.github
+skills-lock.json
+scripts/*.sh
