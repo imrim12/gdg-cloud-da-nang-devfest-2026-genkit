@@ -1,0 +1,269 @@
+{
+  "version": 2,
+  "skills": {
+    "agent-platform-access-audit": {
+      "source": "google/skills",
+      "commit": "afc7485ec4ac555722a334fab84f423d2010c1f0",
+      "sourceType": "github",
+      "skillPath": "skills/cloud/agent-platform-access-audit/SKILL.md",
+      "computedHash": "f35e8f20213823eb8cece4395efda8e249c90a09a62bf6a8b8384ea19247162c",
+      "installMode": "copy"
+    },
+    "agent-platform-agent-registry": {
+      "source": "google/skills",
+      "commit": "afc7485ec4ac555722a334fab84f423d2010c1f0",
+      "sourceType": "github",
+      "skillPath": "skills/cloud/agent-platform-agent-registry/SKILL.md",
+      "computedHash": "464afadaebdf717c26844435eeca5d9b971d4fbd124e8403c3bfb1b2118b0d64",
+      "installMode": "copy"
+    },
+    "agent-platform-alert-configuration": {
+      "source": "google/skills",
+      "commit": "afc7485ec4ac555722a334fab84f423d2010c1f0",
+      "sourceType": "github",
+      "skillPath": "skills/cloud/agent-platform-alert-configuration/SKILL.md",
+      "computedHash": "7a1b52819fa0d3b17acbac4fc7359740ecac35dde6b76cfa5b7f354af71ca3ef",
+      "installMode": "copy"
+    },
+    "agent-platform-architecture": {
+      "source": "google/skills",
+      "commit": "afc7485ec4ac555722a334fab84f423d2010c1f0",
+      "sourceType": "github",
+      "skillPath": "skills/cloud/agent-platform-architecture/SKILL.md",
+      "computedHash": "1c56f2a341b910f8d9a9e9e761aede4e8de9db4be977c67b34db10edb078b02d",
+      "installMode": "copy"
+    },
+    "agent-platform-autorater-customization": {
+      "source": "google/skills",
+      "commit": "afc7485ec4ac555722a334fab84f423d2010c1f0",
+      "sourceType": "github",
+      "skillPath": "skills/cloud/agent-platform-autorater-customization/SKILL.md",
+      "computedHash": "0236ec598dc8a020fe9f7f4712a873acf1d6b69b353ad52e4cc4b025737280c7",
+      "installMode": "copy"
+    },
+    "agent-platform-deploy": {
+      "source": "google/skills",
+      "commit": "afc7485ec4ac555722a334fab84f423d2010c1f0",
+      "sourceType": "github",
+      "skillPath": "skills/cloud/agent-platform-deploy/SKILL.md",
+      "computedHash": "f1741fda55460de8092d2a4ae94c563c08199a13b7130aa147d804ba7bfc01fc",
+      "installMode": "copy"
+    },
+    "agent-platform-endpoint-management": {
+      "source": "google/skills",
+      "commit": "afc7485ec4ac555722a334fab84f423d2010c1f0",
+      "sourceType": "github",
+      "skillPath": "skills/cloud/agent-platform-endpoint-management/SKILL.md",
+      "computedHash": "9b77fb76eebe378aea650cd18ff10a548aa3ed233d1e55640a10cf6a6e1d6621",
+      "installMode": "copy"
+    },
+    "agent-platform-eval-flywheel": {
+      "source": "google/skills",
+      "commit": "afc7485ec4ac555722a334fab84f423d2010c1f0",
+      "sourceType": "github",
+      "skillPath": "skills/cloud/agent-platform-eval-flywheel/SKILL.md",
+      "computedHash": "88bea07b0cce87cc456a42828abf9b62ba2d66424c4ae092934f7456e87f57c2",
+      "installMode": "copy"
+    },
+    "agent-platform-inference": {
+      "source": "google/skills",
+      "commit": "afc7485ec4ac555722a334fab84f423d2010c1f0",
+      "sourceType": "github",
+      "skillPath": "skills/cloud/agent-platform-inference/SKILL.md",
+      "computedHash": "5492e6a7cf466bb8fefc843f8e5f8b227712bcd4090370441ecacca442466694",
+      "installMode": "copy"
+    },
+    "agent-platform-migrate-from-ai-studio": {
+      "source": "google/skills",
+      "commit": "afc7485ec4ac555722a334fab84f423d2010c1f0",
+      "sourceType": "github",
+      "skillPath": "skills/cloud/agent-platform-migrate-from-ai-studio/SKILL.md",
+      "computedHash": "7c6d49be254560a844107cb90eb88967f748c05d13ca4a7a81cdab198d0795a9",
+      "installMode": "copy"
+    },
+    "agent-platform-model-registry": {
+      "source": "google/skills",
+      "commit": "afc7485ec4ac555722a334fab84f423d2010c1f0",
+      "sourceType": "github",
+      "skillPath": "skills/cloud/agent-platform-model-registry/SKILL.md",
+      "computedHash": "db2f1b59b8efab9e9f351d585deae62915e55e67a0567497c4c315d9874e2488",
+      "installMode": "copy"
+    },
+    "agent-platform-prompt-management": {
+      "source": "google/skills",
+      "commit": "afc7485ec4ac555722a334fab84f423d2010c1f0",
+      "sourceType": "github",
+      "skillPath": "skills/cloud/agent-platform-prompt-management/SKILL.md",
+      "computedHash": "0038f8a1d9461481f3582a9910affffd9b6fca0516cdcb590325e35ad86e3ed4",
+      "installMode": "copy"
+    },
+    "agent-platform-rag-engine-management": {
+      "source": "google/skills",
+      "commit": "afc7485ec4ac555722a334fab84f423d2010c1f0",
+      "sourceType": "github",
+      "skillPath": "skills/cloud/agent-platform-rag-engine-management/SKILL.md",
+      "computedHash": "3efa8d92d34a8531ec8b3251e2434593946837b48a470751371f5e5fa80d573e",
+      "installMode": "copy"
+    },
+    "agent-platform-skill-registry": {
+      "source": "google/skills",
+      "commit": "afc7485ec4ac555722a334fab84f423d2010c1f0",
+      "sourceType": "github",
+      "skillPath": "skills/cloud/agent-platform-skill-registry/SKILL.md",
+      "computedHash": "de8c538d905f574fb23dc0f72b3bcac09e2b294bfc99072c89a1e6c41abd00ae",
+      "installMode": "copy"
+    },
+    "agent-platform-troubleshooting": {
+      "source": "google/skills",
+      "commit": "afc7485ec4ac555722a334fab84f423d2010c1f0",
+      "sourceType": "github",
+      "skillPath": "skills/cloud/agent-platform-troubleshooting/SKILL.md",
+      "computedHash": "e4e807634dbd4f461d35e280e32b508e3ba5d151e4804cd13544eeaec469cead",
+      "installMode": "copy"
+    },
+    "agent-platform-tuning": {
+      "source": "google/skills",
+      "commit": "afc7485ec4ac555722a334fab84f423d2010c1f0",
+      "sourceType": "github",
+      "skillPath": "skills/cloud/agent-platform-tuning/SKILL.md",
+      "computedHash": "f8b112b2e82dedb8833f3501e0190ccec398c5b6edf828244680a08334dd7021",
+      "installMode": "copy"
+    },
+    "agent-platform-tuning-management": {
+      "source": "google/skills",
+      "commit": "afc7485ec4ac555722a334fab84f423d2010c1f0",
+      "sourceType": "github",
+      "skillPath": "skills/cloud/agent-platform-tuning-management/SKILL.md",
+      "computedHash": "c148f6f1e4531e5570e3631d13435d18ea3012a5d7e3c3f1d045f4dc9ee5ea64",
+      "installMode": "copy"
+    },
+    "cloud-build-basics": {
+      "source": "google/skills",
+      "commit": "afc7485ec4ac555722a334fab84f423d2010c1f0",
+      "sourceType": "github",
+      "skillPath": "skills/cloud/cloud-build-basics/SKILL.md",
+      "computedHash": "5b1f3f7b5cce5370fb07780d83f6eafd229eb70a8c51dc81ec81aac8a16e3db9",
+      "installMode": "copy"
+    },
+    "cloud-logging-query-generation": {
+      "source": "google/skills",
+      "commit": "afc7485ec4ac555722a334fab84f423d2010c1f0",
+      "sourceType": "github",
+      "skillPath": "skills/cloud/cloud-logging-query-generation/SKILL.md",
+      "computedHash": "cf2b7ec98ca0361e451613fea5d0f6fc48cfd20efb35c47fa34a96cf9d3cb8d8",
+      "installMode": "copy"
+    },
+    "cloud-run-basics": {
+      "source": "google/skills",
+      "commit": "afc7485ec4ac555722a334fab84f423d2010c1f0",
+      "sourceType": "github",
+      "skillPath": "skills/cloud/cloud-run-basics/SKILL.md",
+      "computedHash": "83f13114e493276c91dae5462494c1334f0a2456a049aebd0c5ff0be93898fac",
+      "installMode": "copy"
+    },
+    "developing-genkit-js": {
+      "source": "genkit-ai/skills",
+      "commit": "d12c988b141a0a50ab2d895733204a37b5192793",
+      "sourceType": "github",
+      "skillPath": "skills/developing-genkit-js/SKILL.md",
+      "computedHash": "c5f719f36ad09b0d4e6b66315be222a41e964fd7f849f91b99c95c32a1a74936",
+      "installMode": "copy"
+    },
+    "finding-google-skills": {
+      "source": "google/skills",
+      "commit": "afc7485ec4ac555722a334fab84f423d2010c1f0",
+      "sourceType": "github",
+      "skillPath": "skills/developers/finding-google-skills/SKILL.md",
+      "computedHash": "e0a5b85fcbe5626a71b07c853e215c109eab2fbe75e2edcefd6e921e62184752",
+      "installMode": "copy"
+    },
+    "firebase-basics": {
+      "source": "google/skills",
+      "commit": "afc7485ec4ac555722a334fab84f423d2010c1f0",
+      "sourceType": "github",
+      "skillPath": "skills/cloud/firebase-basics/SKILL.md",
+      "computedHash": "44df002ddf5a1f2ed07364fedd3d808f7720735d09a07e3bbf93a9910a2a17d6",
+      "installMode": "copy"
+    },
+    "gcloud": {
+      "source": "google/skills",
+      "commit": "afc7485ec4ac555722a334fab84f423d2010c1f0",
+      "sourceType": "github",
+      "skillPath": "skills/cloud/gcloud/SKILL.md",
+      "computedHash": "ad29fb77d1e07f1401bfab1c023d016915d09b2b1fd37c2a9d7c92c6d732e55c",
+      "installMode": "copy"
+    },
+    "gemini-agents-api": {
+      "source": "google/skills",
+      "commit": "afc7485ec4ac555722a334fab84f423d2010c1f0",
+      "sourceType": "github",
+      "skillPath": "skills/cloud/gemini-agents-api/SKILL.md",
+      "computedHash": "e21f71db5075aa32cf53e06dbb846d2cbd3a398d49b6ad60714b8dfbd1261ade",
+      "installMode": "copy"
+    },
+    "gemini-api": {
+      "source": "google/skills",
+      "commit": "afc7485ec4ac555722a334fab84f423d2010c1f0",
+      "sourceType": "github",
+      "skillPath": "skills/cloud/gemini-api/SKILL.md",
+      "computedHash": "56789692d566b9fc75b6e8dd09ece8e53f03a74299cd25d6d264ecd5830b0ef3",
+      "installMode": "copy"
+    },
+    "gemini-interactions-api": {
+      "source": "google/skills",
+      "commit": "afc7485ec4ac555722a334fab84f423d2010c1f0",
+      "sourceType": "github",
+      "skillPath": "skills/cloud/gemini-interactions-api/SKILL.md",
+      "computedHash": "e44900529abf52b0e3403ad6cf91a7d74aefb660091a37d0a4c48e628a32bb3b",
+      "installMode": "copy"
+    },
+    "gemini-live-api": {
+      "source": "google/skills",
+      "commit": "afc7485ec4ac555722a334fab84f423d2010c1f0",
+      "sourceType": "github",
+      "skillPath": "skills/cloud/gemini-live-api/SKILL.md",
+      "computedHash": "3026dcd7545b0fa0544a0f88dc9b2f77c716a9324ae323ec0769a364b1078bb7",
+      "installMode": "copy"
+    },
+    "google-cicd-deploy": {
+      "source": "google/skills",
+      "commit": "afc7485ec4ac555722a334fab84f423d2010c1f0",
+      "sourceType": "github",
+      "skillPath": "skills/cloud/google-cicd-deploy/SKILL.md",
+      "computedHash": "4e84177cdaaf72aea22f2d9458d38c9819f62cec13da7e8c28edd804ae5f8baa",
+      "installMode": "copy"
+    },
+    "google-cloud-storage-basics": {
+      "source": "google/skills",
+      "commit": "afc7485ec4ac555722a334fab84f423d2010c1f0",
+      "sourceType": "github",
+      "skillPath": "skills/cloud/google-cloud-storage-basics/SKILL.md",
+      "computedHash": "39237e81a513efaa3427eac2a20de9a1e9da43861aa8f460d0207eb915e77478",
+      "installMode": "copy"
+    },
+    "iam-helper-for-troubleshooting": {
+      "source": "google/skills",
+      "commit": "afc7485ec4ac555722a334fab84f423d2010c1f0",
+      "sourceType": "github",
+      "skillPath": "skills/cloud/iam-helper-for-troubleshooting/SKILL.md",
+      "computedHash": "2c0cd891700e11657b4d7d63395259d6f6544746c0ef6739b9b894e2e395a3c9",
+      "installMode": "copy"
+    },
+    "retrieving-developer-knowledge": {
+      "source": "google/skills",
+      "commit": "afc7485ec4ac555722a334fab84f423d2010c1f0",
+      "sourceType": "github",
+      "skillPath": "skills/developers/retrieving-developer-knowledge/SKILL.md",
+      "computedHash": "66b5eb52bacc6b60efd80034ff58fb0e22977ea9db685628e1681301490d82ca",
+      "installMode": "copy"
+    },
+    "sign-in-with-google-web": {
+      "source": "google/skills",
+      "commit": "afc7485ec4ac555722a334fab84f423d2010c1f0",
+      "sourceType": "github",
+      "skillPath": "skills/identity/sign-in-with-google-web/SKILL.md",
+      "computedHash": "0f0096b368233ec21c07968772ad5fab13751e94543786cab01e0e3b79b4cbf5",
+      "installMode": "copy"
+    }
+  }
+}
