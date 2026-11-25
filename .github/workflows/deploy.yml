@@ -1,9 +1,11 @@
-# Push to main → lint + typecheck → build image → deploy to Cloud Run (scales to zero).
-# One-time setup: bash scripts/cloud-run-setup.sh <project> <owner/repo> (see README "Deploy").
+# PR merged into main → lint + typecheck → build image → deploy to Cloud Run (scales to zero).
+# Direct pushes to main do not deploy; run the workflow by hand (Actions → Deploy) to redeploy.
+# One-time setup: bash scripts/cloud-run-setup.sh <project> <owner/repo> (see README, part 4).
 name: Deploy
 
 on:
-  push:
+  pull_request:
+    types: [closed]
     branches: [main]
   workflow_dispatch:
 
@@ -18,6 +20,8 @@ env:
 
 jobs:
   check:
+    # Closed PRs only deploy when merged.
+    if: github.event_name == 'workflow_dispatch' || github.event.pull_request.merged == true
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -69,6 +73,8 @@ jobs:
           NUXT_GCP_BROWSER_TEMPLATE: ${{ vars.NUXT_GCP_BROWSER_TEMPLATE }}
           NUXT_MODEL: ${{ vars.NUXT_MODEL }}
           NUXT_LIVE_MODEL: ${{ vars.NUXT_LIVE_MODEL }}
+          # Agent Platform region; may differ from the Cloud Run region.
+          AGENT_REGION: ${{ vars.NUXT_GCP_LOCATION || vars.GCP_REGION || 'us-central1' }}
           MAX_INSTANCES: ${{ vars.MAX_INSTANCES || '3' }}
           # Optional Google sign-in: set AUTH_URL to the service URL (after the first deploy) and
           # create the auth-secret, auth-google-client-id and auth-google-client-secret secrets.
@@ -78,7 +84,7 @@ jobs:
           SECRETS=NUXT_GEMINI_API_KEY=gemini-api-key:latest
           {
             echo "NUXT_GCP_PROJECT: '$PROJECT'"
-            echo "NUXT_GCP_LOCATION: '$REGION'"
+            echo "NUXT_GCP_LOCATION: '$AGENT_REGION'"
             echo "NUXT_GCP_BUCKET: '$PROJECT-agent-files'"
             echo "NUXT_GCP_SERVICE_ACCOUNT: '$RUNTIME_SA'"
             for name in NUXT_GCP_ENGINE NUXT_GCP_SHELL_TEMPLATE NUXT_GCP_BROWSER_TEMPLATE NUXT_MODEL NUXT_LIVE_MODEL; do

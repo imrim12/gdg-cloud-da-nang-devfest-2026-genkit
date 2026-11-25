@@ -7,6 +7,7 @@
 # Run it in Cloud Shell (or anywhere `gcloud` is logged in as a project Owner).
 # --agent-platform also creates the Agent Platform engine (Memory Bank, code/shell/browser
 # sandboxes) with scripts/setup.ts. Only pass it once: each run creates a new engine.
+# The engine goes in AGENT_REGION (default: region), e.g. AGENT_REGION=us-central1.
 set -euo pipefail
 
 AGENT_PLATFORM=
@@ -17,6 +18,7 @@ done
 PROJECT=${ARGS[0]:-}
 REPO=${ARGS[1]:-}
 REGION=${ARGS[2]:-us-central1}
+AGENT_REGION=${AGENT_REGION:-$REGION}
 if [[ -z $PROJECT || $REPO != */* ]]; then
   echo "Usage: bash scripts/cloud-run-setup.sh <project> <github-owner/repo> [region] [--agent-platform]" >&2
   exit 1
@@ -94,10 +96,10 @@ retry gcloud iam service-accounts add-iam-policy-binding "$DEPLOYER_SA" --role r
 
 VARS=(GCP_PROJECT="$PROJECT" GCP_PROJECT_NUMBER="$NUMBER" GCP_REGION="$REGION")
 if [[ -n $AGENT_PLATFORM ]]; then
-  step "Agent Platform engine (Memory Bank + sandbox templates)"
+  step "Agent Platform engine in $AGENT_REGION (Memory Bank + sandbox templates)"
   npm ci --ignore-scripts --no-audit --no-fund >/dev/null
-  OUTPUT=$(node scripts/setup.ts "$PROJECT" "$REGION")
-  for name in NUXT_GCP_ENGINE NUXT_GCP_SHELL_TEMPLATE NUXT_GCP_BROWSER_TEMPLATE; do
+  OUTPUT=$(npx -y tsx scripts/setup.ts "$PROJECT" "$AGENT_REGION")
+  for name in NUXT_GCP_LOCATION NUXT_GCP_ENGINE NUXT_GCP_SHELL_TEMPLATE NUXT_GCP_BROWSER_TEMPLATE; do
     VARS+=("$(grep "^$name=" <<<"$OUTPUT")")
   done
 fi
