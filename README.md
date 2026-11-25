@@ -180,6 +180,30 @@ curl -s -X POST $URL/api/chat -H 'content-type: application/json' \
 🎤 **Voice:** open `$URL` in Chrome, click the microphone and talk. The browser gets a one-time token from
 `/api/voice` and talks to the Gemini Live API directly.
 
+### Change the Gemini API key
+
+The key lives in Secret Manager as `gemini-api-key`. To switch keys (for example to one from a billing
+project, so web search works), add a new **version** of the secret, then roll out a new revision. Cloud Run
+reads `:latest` only when an instance starts.
+
+```bash
+read -rsp "New Gemini API key: " KEY && echo
+printf %s "$KEY" | gcloud secrets versions add gemini-api-key --data-file=-
+unset KEY
+gcloud run services update agent --region $REGION --update-secrets NUXT_GEMINI_API_KEY=gemini-api-key:latest
+```
+
+Optionally, disable the old key's version (check its number first):
+
+```bash
+gcloud secrets versions list gemini-api-key
+gcloud secrets versions disable 1 --secret gemini-api-key
+```
+
+In the Console instead: **Secret Manager → `gemini-api-key` → New version**, then
+**Cloud Run → `agent` → Edit & deploy new revision → Deploy**. Later deploys, including GitHub Actions,
+use `gemini-api-key:latest`, so they pick up the new key automatically.
+
 ## 4. (Optional) Files on Cloud Storage
 
 Gives the agent a `save` tool that writes downloadable files.
@@ -334,7 +358,7 @@ Also delete your Gemini API key in [AI Studio](https://aistudio.google.com/apike
 
 | Symptom | Fix |
 | --- | --- |
-| `search` fails with `429 RESOURCE_EXHAUSTED` | Grounding needs a key from a project with billing. Create the key in AI Studio on your billing project, then `printf %s "$NEW_KEY" \| gcloud secrets versions add gemini-api-key --data-file=-` and redeploy |
+| `search` fails with `429 RESOURCE_EXHAUSTED` | Grounding needs a key from a project with billing. Create one in AI Studio on your billing project, then follow [Change the Gemini API key](#change-the-gemini-api-key) |
 | `503 ... experiencing high demand` | Gemini is busy, try again in a minute. Or use another model: `gcloud run services update agent --region $REGION --update-env-vars NUXT_MODEL=gemini-3.5-flash` |
 | Deploy: `PERMISSION_DENIED` from Cloud Build | Re-run the `roles/run.builder` command in part 3 and wait a minute |
 | Deploy: `allUsers ... permitted customer` (organization policy) | Your organization blocks public services. Deploy without `--allow-unauthenticated`, then `gcloud run services proxy agent --region $REGION --port 8080` and use Web Preview on 8080 |
