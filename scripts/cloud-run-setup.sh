@@ -31,8 +31,9 @@ POOL=github
 
 step() { printf '\n\033[1m==> %s\033[0m\n' "$*"; }
 exists() { "$@" >/dev/null 2>&1; }
-# New service accounts take a few seconds to become usable in IAM bindings.
-retry() { for i in 1 2 3 4 5 6; do "$@" >/dev/null && return; sleep $((i * 5)); done; "$@" >/dev/null; }
+# New service accounts and identity pools take a few seconds to become usable in IAM bindings.
+# Errors are only shown if the last attempt fails too.
+retry() { for i in 1 2 3 4 5 6; do "$@" >/dev/null 2>&1 && return; sleep $((i * 5)); done; "$@" >/dev/null; }
 
 gcloud config set project "$PROJECT" >/dev/null
 NUMBER=$(gcloud projects describe "$PROJECT" --format='value(projectNumber)')
