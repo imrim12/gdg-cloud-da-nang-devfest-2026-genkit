@@ -1,0 +1,38 @@
+{
+  "name": "agent",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "nuxt build",
+    "dev": "nuxt dev",
+    "preview": "node .output/server/index.mjs",
+    "postinstall": "nuxt prepare",
+    "lint": "eslint .",
+    "typecheck": "nuxt typecheck"
+  },
+  "dependencies": {
+    "@genkit-ai/google-genai": "^1.44.0",
+    "@google-cloud/storage": "^9.0.0",
+    "@google/genai": "^3.6.1",
+    "@iconify-json/lucide": "^1.2.159",
+    "@iconify-json/simple-icons": "^1.2.104",
+    "@nuxt/eslint": "^1.17.0",
+    "@nuxt/ui": "^4.13.1",
+    "@nuxtjs/mdc": "^0.23.4",
+    "@vueuse/core": "^15.1.0",
+    "better-auth": "^1.7.28",
+    "genkit": "^1.44.0",
+    "google-auth-library": "^11.3.4",
+    "nuxt": "^4.7.0",
+    "playwright-core": "^1.65.1",
+    "tailwindcss": "^4.3.5",
+    "zod": "^4.6.7"
+  },
+  "devDependencies": {
+    "@google-cloud/aiplatform": "^7.8.0",
+    "ai": "^7.0.181",
+    "eslint": "^10.15.0",
+    "typescript": "^6.0.3",
+    "vue-tsc": "^3.3.14"
+  }
+}
