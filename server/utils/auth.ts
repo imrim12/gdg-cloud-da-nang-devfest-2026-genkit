@@ -6,12 +6,12 @@ function create() {
   return betterAuth({
     secret: auth.secret,
     socialProviders: {
-      google: { clientId: auth.googleClientId, clientSecret: auth.googleClientSecret },
+      google: { clientId: auth.googleClientId, clientSecret: auth.googleClientSecret }
     },
     session: {
-      cookieCache: { enabled: true, maxAge: 60 * 60 * 24 * 7, strategy: 'jwe', refreshCache: true },
+      cookieCache: { enabled: true, maxAge: 60 * 60 * 24 * 7, strategy: 'jwe', refreshCache: true }
     },
-    account: { storeStateStrategy: 'cookie', storeAccountCookie: true },
+    account: { storeStateStrategy: 'cookie', storeAccountCookie: true }
   })
 }
 

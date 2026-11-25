@@ -31,15 +31,15 @@ const engine = await create(`${api}/projects/${project}/locations/${location}/re
   contextSpec: {
     memoryBankConfig: {
       generationConfig: { model: publisher(model) },
-      similaritySearchConfig: { embeddingModel: publisher('gemini-embedding-001') },
-    },
-  },
+      similaritySearchConfig: { embeddingModel: publisher('gemini-embedding-001') }
+    }
+  }
 })
 
 const template = (displayName: string, category: string) => create(`${api}/${engine}/sandboxEnvironmentTemplates`, {
   displayName,
   defaultContainerEnvironment: { defaultContainerCategory: category },
-  egressControlConfig: { internetAccess: true },
+  egressControlConfig: { internetAccess: true }
 })
 
 const shell = await template('shell', 'DEFAULT_CONTAINER_CATEGORY_SHELL_SANDBOX')

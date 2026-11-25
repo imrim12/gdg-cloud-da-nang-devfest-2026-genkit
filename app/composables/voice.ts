@@ -52,7 +52,7 @@ export function useVoice() {
       session = await ai.live.connect({
         model,
         config: { responseModalities: [Modality.AUDIO] },
-        callbacks: { onmessage: play, onclose: stop, onerror: stop },
+        callbacks: { onmessage: play, onclose: stop, onerror: stop }
       })
 
       microphone = await navigator.mediaDevices.getUserMedia({ audio: { channelCount: 1, echoCancellation: true, noiseSuppression: true } })
@@ -63,8 +63,7 @@ export function useVoice() {
         session?.sendRealtimeInput({ audio: { data: base64(data), mimeType: 'audio/pcm;rate=16000' } })
       input.createMediaStreamSource(microphone).connect(worklet)
       status.value = 'live'
-    }
-    catch (error) {
+    } catch (error) {
       stop()
       throw error
     }

@@ -6,6 +6,6 @@ export function features() {
     code: !!gcp.engine,
     shell: !!(gcp.engine && gcp.shellTemplate),
     browser: !!(gcp.engine && gcp.browserTemplate && gcp.serviceAccount),
-    files: !!gcp.bucket,
+    files: !!gcp.bucket
   }
 }

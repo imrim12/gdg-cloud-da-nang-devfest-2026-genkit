@@ -30,8 +30,7 @@ async function find(key: string): Promise<Sandbox | undefined> {
   try {
     const { sandboxEnvironments = [] } = await gcp<{ sandboxEnvironments?: Sandbox[] }>(url.toString())
     return sandboxEnvironments.find(sandbox => sandbox.displayName === key && alive(sandbox))
-  }
-  catch (error) {
+  } catch (error) {
     console.error('sandbox lookup failed', error)
   }
 }
@@ -67,7 +66,7 @@ export const sandbox = {
     const created = await operation<Sandbox>(`${platform()}/${useRuntimeConfig().gcp.engine}/sandboxEnvironments`, {
       displayName: key,
       ttl: '3600s',
-      ...spec(kind),
+      ...spec(kind)
     })
     await storage.setItem(key, created.name)
     return await gcp<Sandbox>(`${platform()}/${created.name}`)
@@ -76,5 +75,5 @@ export const sandbox = {
   async execute(name: string, inputs: Chunk[]): Promise<Chunk[]> {
     const { outputs } = await gcp<{ outputs?: Chunk[] }>(`${platform()}/${name}:execute`, { inputs })
     return outputs ?? []
-  },
+  }
 }

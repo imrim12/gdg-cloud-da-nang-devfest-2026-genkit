@@ -7,7 +7,7 @@ export const memory = {
   async recall(userId: string, query: string): Promise<string[]> {
     const { retrievedMemories = [] } = await gcp<{ retrievedMemories?: { memory: { fact: string } }[] }>(
       `${platform()}/${useRuntimeConfig().gcp.engine}/memories:retrieve`,
-      { scope: scope(userId), similaritySearchParams: { searchQuery: query, topK: 5 } },
+      { scope: scope(userId), similaritySearchParams: { searchQuery: query, topK: 5 } }
     )
     return retrievedMemories.map(({ memory }) => memory.fact)
   },
@@ -17,8 +17,8 @@ export const memory = {
     await gcp(`${platform()}/${useRuntimeConfig().gcp.engine}/memories:generate`, {
       scope: scope(userId),
       directContentsSource: {
-        events: turns.map(({ role, text }) => ({ content: { role, parts: [{ text }] } })),
-      },
+        events: turns.map(({ role, text }) => ({ content: { role, parts: [{ text }] } }))
+      }
     })
-  },
+  }
 }

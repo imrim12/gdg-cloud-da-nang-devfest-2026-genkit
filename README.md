@@ -1,19 +1,27 @@
-# Build an AI agent with Genkit, Gemini and Cloud Run
+# Build a ChatGPT-style agent with Genkit, Gemini and Cloud Run
 
 **GDG Cloud Đà Nẵng · DevFest 2026 codelab**
 
-You will deploy a ChatGPT-style agent to **your own Google Cloud project**, entirely from **Cloud Shell**:
-streaming chat with tools, web search, voice, file downloads, and optionally long-term memory, a Python
-sandbox, a shell and a browser it can drive. Every step is copy/paste.
+You will deploy a ChatGPT/Claude-style AI app to **your own Google Cloud project**, entirely from **Cloud Shell**,
+and every step is copy/paste. What you get:
 
-**Stack:** Nuxt 4 + Nuxt UI · Genkit (flows + tools) · Gemini API + Live API · Cloud Run (scales to zero) ·
-Secret Manager · Cloud Storage · Agent Platform (Memory Bank, sandboxes) · GitHub Actions
+- **Chat that streams**, with the model's thinking, tool calls and sources shown as it works
+- **Any Gemini model**, picked from a list loaded live from the Gemini API
+- **History** in Firestore: sidebar, search, rename, delete, share, edit, regenerate and votes. Titles are written by a Genkit flow.
+- **Tools:** exact maths (`calculate`), web search, files, plus Python, shell and a browser when Agent Platform is enabled
+- **Canvas:** ask for an app or page, watch the code being written, then use it live in a side panel
+- **Voice mode** with the Gemini Live API, and optional **Sign in with Google**
+
+**Stack:** Nuxt 4 + [Nuxt UI chat template](https://ui.nuxt.com/templates) · Genkit (flows, tools, middleware) ·
+Gemini API + Live API · Cloud Run (scales to zero) · Firestore · Secret Manager · Cloud Storage ·
+Agent Platform (Memory Bank, sandboxes) · GitHub Actions
 
 ```
-Browser ──chat (NDJSON stream)──▶ Cloud Run: Nuxt + Genkit ──▶ Gemini API (+ Google Search grounding)
-   │                                   │  tools ──▶ Cloud Storage (files)
-   │                                   └──────────▶ Agent Platform (Memory Bank, Python / shell / browser sandboxes)
-   └──voice (WebSocket, ephemeral token)──▶ Gemini Live API
+Browser (Nuxt UI + AI SDK) ──stream──▶ Cloud Run: Nuxt server + Genkit flows ──▶ Gemini API
+   │                                        │   chat · title · canvas         (Google Search grounding)
+   │                                        ├─▶ Firestore (chats)      ├─▶ Cloud Storage (files)
+   │                                        └─▶ Agent Platform (Memory Bank, Python / shell / browser sandboxes)
+   └──voice (WebSocket, one-time token)──▶ Gemini Live API
 ```
 
 | Part | What you get | Time |
@@ -21,12 +29,13 @@ Browser ──chat (NDJSON stream)──▶ Cloud Run: Nuxt + Genkit ──▶ G
 | [0. Before you start](#0-before-you-start) | Project, billing, Gemini API key | 5 min |
 | [1. Set up Cloud Shell](#1-set-up-cloud-shell) | Code and variables | 3 min |
 | [2. Run it in Cloud Shell](#2-run-it-in-cloud-shell-with-the-genkit-developer-ui) | Local app + **Genkit Developer UI** | 10 min |
-| [3. Deploy to Cloud Run](#3-deploy-to-cloud-run) | **Your public URL** | 10 min |
-| [4. Files on Cloud Storage](#4-optional-files-on-cloud-storage) (optional) | `save` tool | 3 min |
-| [5. Memory, Python, shell, browser](#5-optional-memory-python-shell-and-browser-with-agent-platform) (optional) | Agent Platform tools | 10 min |
-| [6. Add your own tool](#6-add-your-own-genkit-tool) | A `weather` tool | 5 min |
-| [7. Deploy on every merged PR](#7-optional-deploy-on-every-merged-pr-with-github-actions) (optional) | GitHub Actions CI/CD | 10 min |
-| [8. Clean up](#8-clean-up) | No surprise bills | 2 min |
+| [3. Deploy to Cloud Run](#3-deploy-to-cloud-run) | **Your public URL**, with history in Firestore | 10 min |
+| [4. Files on Cloud Storage](#4-optional-files-on-cloud-storage) (optional) | Uploads and the `save` tool | 3 min |
+| [5. Memory, Python, shell, browser](#5-optional-memory-python-shell-and-browser-with-agent-platform) (optional) | Agent Platform tools, canvas self-check | 10 min |
+| [6. Sign in with Google](#6-optional-sign-in-with-google) (optional) | History across devices | 5 min |
+| [7. Add your own tool](#7-add-your-own-genkit-tool) | A `weather` tool | 5 min |
+| [8. Deploy on every merged PR](#8-optional-deploy-on-every-merged-pr-with-github-actions) (optional) | GitHub Actions CI/CD | 10 min |
+| [9. Clean up](#9-clean-up) | No surprise bills | 2 min |
 
 ---
 
@@ -35,9 +44,11 @@ Browser ──chat (NDJSON stream)──▶ Cloud Run: Nuxt + Genkit ──▶ G
 1. **A Google Cloud project with billing enabled.** Use event credits if you have them, or create a project
    at [console.cloud.google.com/projectcreate](https://console.cloud.google.com/projectcreate) and link a
    billing account. Cloud Run scales to zero, so an idle demo costs close to nothing.
-2. **A Gemini API key:** [aistudio.google.com/apikey](https://aistudio.google.com/apikey) → **Create API key**
-   → pick **the same project**. Web search (Google Search grounding) needs a project with billing; on a
-   free-tier key it fails with `429 RESOURCE_EXHAUSTED` while normal chat still works.
+2. **A Gemini API key on that billing project:** [aistudio.google.com/apikey](https://aistudio.google.com/apikey)
+   → **Create API key** → pick **the same project**.
+   > ⚠️ A free-tier key allows about **20 requests per day per model**, and one agent turn uses several (each
+   > tool round, the title, search). Web search does not work at all on the free tier (`429 RESOURCE_EXHAUSTED`).
+   > Use a key from a project with billing.
 3. You are an **Owner** (or Editor + Security Admin) of the project.
 
 ## 1. Set up Cloud Shell
@@ -50,7 +61,8 @@ export REGION=asia-southeast1            # Singapore, closest to Đà Nẵng
 gcloud config set project $PROJECT_ID
 export PROJECT_NUMBER=$(gcloud projects describe $PROJECT_ID --format='value(projectNumber)')
 export RUNTIME_SA=agent-runtime@$PROJECT_ID.iam.gserviceaccount.com
-echo "project=$PROJECT_ID number=$PROJECT_NUMBER region=$REGION"
+export URL=https://agent-$PROJECT_NUMBER.$REGION.run.app
+echo "project=$PROJECT_ID number=$PROJECT_NUMBER region=$REGION url=$URL"
 ```
 
 Paste your Gemini API key when asked (it is not shown, and not saved to disk):
@@ -87,29 +99,34 @@ npm run build
 PORT=8080 NUXT_GEMINI_API_KEY=$GEMINI_API_KEY npx -y genkit-cli start --non-interactive -- node .output/server/index.mjs
 ```
 
-1. **The app:** Cloud Shell toolbar → **Web Preview** (the `<>` eye icon) → **Preview on port 8080**. Try:
-   - `Write a haiku about Đà Nẵng, then a table of its 3 best beaches`
-   - `What's happening at GDG DevFest this year?`. Watch the `search` tool call appear.
+1. **The app:** Cloud Shell toolbar → **Web Preview** (the `<>` eye icon) → **Preview on port 8080**. Try the
+   suggestions on the home page:
+   - `Saving 5M VND a month at 6%: total after 10 years?`: a **calculate** card appears
+   - `Make a Pomodoro timer app`: the **canvas** opens, the code streams in, then the app runs in the side panel
+   - Pick another model in the prompt (the list comes from the Gemini API), or turn off **Extended thinking** in the `+` menu.
+
+   Locally, chats are kept in memory; part 3 stores them in Firestore.
 2. **The Genkit Developer UI:** **Web Preview → Change port → `4000`**.
-   - Send one chat message in the app first. Genkit loads with the first request, then the `chat` flow and
-     the tools show up.
-   - **Flows → chat**: run the flow directly with this input:
-     ```json
-     { "chatId": "devui", "userId": "me", "messages": [{ "role": "user", "text": "Hello from the Dev UI!" }] }
-     ```
-   - **Traces**: open any run to see every model call, the tool requests and responses, tokens and latency.
-   - **Models / Tools**: call Gemini or a single tool (try `search`) on its own.
+   - Send one message in the app first: Genkit loads with the first request.
+   - **Flows**: run each flow on its own.
+     - `title`: `{ "message": "Help me plan a weekend in Hội An" }`
+     - `chat`: `{ "chatId": "devui", "userId": "me", "messages": [{ "role": "user", "content": [{ "text": "What is 2^64?" }] }] }`
+     - `canvas`: `{ "chatId": "devui", "userId": "me", "request": "A countdown to DevFest Đà Nẵng 2026" }`
+   - **Traces**: open a run to see every model call, tool request and response, retries, tokens and latency.
+   - **Models / Tools**: call a Gemini model or a single tool (try `calculate`) on its own.
 
 Stop it with **Ctrl+C** before continuing.
 
-**Where the Genkit code lives** (read these three, they are short):
+**Where the Genkit code lives:**
 
 | File | What it does |
 | --- | --- |
-| `server/genkit/index.ts` | `genkit({ plugins: [googleAI()] })` and the model name |
-| `server/genkit/flows/chat.ts` | The `chat` flow: system prompt, `ai.generateStream({ tools, maxTurns })`, streams text and tool events |
-| `server/genkit/tools/*.ts` | One `ai.defineTool()` per tool: a name, a description and a Zod input schema the model reads |
-| `server/api/chat.post.ts` | Calls `chat.stream()` and sends each chunk to the browser as a line of JSON |
+| `server/genkit/index.ts` | `genkit({ plugins: [googleAI()] })`, plus model middleware: `retry`, `fallback` to another Gemini model, and thinking levels |
+| `server/flows/chat.ts` | The agent: `ai.generateStream({ tools, maxTurns })`, streaming text, thoughts, tool calls and results |
+| `server/flows/title.ts` | A short title from the first message, with structured output (`output: { schema }`) |
+| `server/flows/canvas.ts` | Writes a web app as structured output, streams it, and self-checks it in a sandbox browser when available |
+| `server/tools/*.ts` | `calculate` (mathjs), `search` (Google Search grounding), `canvas`, `python`, `shell`, `browse`, `save` |
+| `server/api/chats/[id].post.ts` | Runs the chat flow and turns its events into the AI SDK stream that the Nuxt UI chat components render |
 
 ## 3. Deploy to Cloud Run
 
@@ -117,7 +134,13 @@ Enable the APIs (about 1 minute):
 
 ```bash
 gcloud services enable run.googleapis.com cloudbuild.googleapis.com \
-  artifactregistry.googleapis.com secretmanager.googleapis.com
+  artifactregistry.googleapis.com secretmanager.googleapis.com firestore.googleapis.com
+```
+
+Create the **Firestore** database for chat history (Native mode, in your region):
+
+```bash
+gcloud firestore databases create --database="(default)" --location=$REGION --type=firestore-native
 ```
 
 Store the Gemini key in **Secret Manager**, so it never sits in an env var or in the image:
@@ -127,12 +150,14 @@ printf %s "$GEMINI_API_KEY" | gcloud secrets create gemini-api-key \
   --replication-policy=automatic --data-file=-
 ```
 
-Create a **service account** for the app (least privilege: it can only read that secret, for now):
+Create a **service account** for the app, which can read that secret and use Firestore:
 
 ```bash
 gcloud iam service-accounts create agent-runtime --display-name="Agent (Cloud Run runtime)"
 gcloud secrets add-iam-policy-binding gemini-api-key \
   --member=serviceAccount:$RUNTIME_SA --role=roles/secretmanager.secretAccessor
+gcloud projects add-iam-policy-binding $PROJECT_ID \
+  --member=serviceAccount:$RUNTIME_SA --role=roles/datastore.user --condition=None
 ```
 
 Let **Cloud Build** build your source (new projects build as the Compute Engine default service account):
@@ -150,6 +175,7 @@ service (3–5 minutes):
 gcloud run deploy agent --source . --region $REGION \
   --service-account $RUNTIME_SA \
   --set-secrets NUXT_GEMINI_API_KEY=gemini-api-key:latest \
+  --set-env-vars "NUXT_GCP_PROJECT=$PROJECT_ID,NUXT_GCP_FIRESTORE=(default)" \
   --allow-unauthenticated \
   --min-instances 0 --max-instances 2 \
   --cpu-boost --timeout 900 --quiet
@@ -160,31 +186,20 @@ gcloud run deploy agent --source . --region $REGION \
 | `--min-instances 0` | Scale to zero: no requests, no instances, no cost |
 | `--max-instances 2` | Caps cost if someone finds your URL |
 | `--cpu-boost` | Extra CPU while starting, for faster cold starts |
-| `--timeout 900` | An agent turn can call up to 10 tools in a row |
+| `--timeout 900` | An agent turn can call up to 10 tools in a row, and a canvas takes a minute or two |
 | `--set-secrets` | Mounts the secret as `NUXT_GEMINI_API_KEY` at runtime |
+| `NUXT_GCP_FIRESTORE` | Stores chats in Firestore instead of memory |
 
-Open your agent:
+Open **`$URL`** (`echo $URL`). Your chats now survive restarts and scale to zero.
 
-```bash
-export URL=$(gcloud run services describe agent --region $REGION --format='value(status.url)')
-echo $URL
-```
-
-Or test it from the terminal. The reply streams back as JSON lines:
-
-```bash
-curl -s -X POST $URL/api/chat -H 'content-type: application/json' \
-  -d "{\"id\":\"$(cat /proc/sys/kernel/random/uuid)\",\"messages\":[{\"role\":\"user\",\"text\":\"Xin chào! Reply in one sentence.\"}]}"
-```
-
-🎤 **Voice:** open `$URL` in Chrome, click the microphone and talk. The browser gets a one-time token from
-`/api/voice` and talks to the Gemini Live API directly.
+🎤 **Voice:** in Chrome, click the microphone in an empty prompt and talk. The browser gets a one-time token
+from `/api/voice` and talks to the Gemini Live API directly.
 
 ### Change the Gemini API key
 
 The key lives in Secret Manager as `gemini-api-key`. To switch keys (for example to one from a billing
-project, so web search works), add a new **version** of the secret, then roll out a new revision. Cloud Run
-reads `:latest` only when an instance starts.
+project), add a new **version** of the secret, then roll out a new revision. Cloud Run reads `:latest`
+only when an instance starts.
 
 ```bash
 read -rsp "New Gemini API key: " KEY && echo
@@ -206,22 +221,23 @@ use `gemini-api-key:latest`, so they pick up the new key automatically.
 
 ## 4. (Optional) Files on Cloud Storage
 
-Gives the agent a `save` tool that writes downloadable files.
+Turns on **file uploads** (images, PDF, CSV: the `+` menu or drag and drop) and the `save` tool.
 
 ```bash
 gcloud storage buckets create gs://$PROJECT_ID-agent-files --location=$REGION --uniform-bucket-level-access
 gcloud storage buckets add-iam-policy-binding gs://$PROJECT_ID-agent-files \
   --member=serviceAccount:$RUNTIME_SA --role=roles/storage.objectUser
-gcloud run services update agent --region $REGION \
-  --update-env-vars NUXT_GCP_PROJECT=$PROJECT_ID,NUXT_GCP_BUCKET=$PROJECT_ID-agent-files
+gcloud run services update agent --region $REGION --update-env-vars NUXT_GCP_BUCKET=$PROJECT_ID-agent-files
 ```
 
-Try: `Make a 3-day Đà Nẵng itinerary and save it as itinerary.md`.
+Try: attach a photo of a menu and ask `How much is this order with 10% tax?`, or
+`Make a 3-day Đà Nẵng itinerary and save it as itinerary.md`.
 
 ## 5. (Optional) Memory, Python, shell and browser with Agent Platform
 
 Creates an Agent Platform engine with **Memory Bank** plus **code execution**, **shell** and **computer use**
 sandbox templates. These features are newer, so we use `us-central1` for them; the app stays in Singapore.
+With the browser sandbox, **canvas** also opens each app in a real browser, screenshots it, and fixes console errors.
 
 ```bash
 export AGENT_REGION=us-central1
@@ -240,7 +256,7 @@ npx -y tsx scripts/setup.ts $PROJECT_ID $AGENT_REGION | tee agent-platform.env
 
 > If it fails with a credentials error, run `gcloud auth application-default login`, then run it again.
 
-Give the app the engine and redeploy the configuration:
+Give the app the engine:
 
 ```bash
 gcloud run services update agent --region $REGION \
@@ -254,21 +270,58 @@ Try, in new chats:
 - `Use the shell: what OS and CPU are you running on?`
 - `Browse to developers.google.com/community/gdg and tell me what's on the page`
 
-## 6. Add your own Genkit tool
+## 6. (Optional) Sign in with Google
+
+Visitors are anonymous by default, identified by a cookie. With sign-in, history follows people across
+devices; chats made before signing in move to the account.
+
+Google has no command line for creating OAuth clients, so this is the one Console step (2 minutes):
+
+```bash
+echo "Branding:  https://console.cloud.google.com/auth/branding?project=$PROJECT_ID"
+echo "Client:    https://console.cloud.google.com/auth/clients/create?project=$PROJECT_ID"
+echo "Origin:    $URL"
+echo "Redirect:  $URL/api/auth/callback/google"
+```
+
+1. **Branding** (once per project): an app name and support email, then **Audience: External**.
+2. **Clients → Create client → Web application**: paste the **Origin** under *Authorized JavaScript origins*
+   and the **Redirect** under *Authorized redirect URIs* → **Create**.
+
+Paste the client ID and secret, and store them in Secret Manager with a random session secret:
+
+```bash
+read -rp "Client ID: " CLIENT_ID && read -rsp "Client secret: " CLIENT_SECRET && echo
+printf %s "$CLIENT_ID" | gcloud secrets create auth-google-client-id --data-file=-
+printf %s "$CLIENT_SECRET" | gcloud secrets create auth-google-client-secret --data-file=-
+openssl rand -base64 32 | tr -d '\n' | gcloud secrets create auth-secret --data-file=-
+for secret in auth-google-client-id auth-google-client-secret auth-secret; do
+  gcloud secrets add-iam-policy-binding $secret \
+    --member=serviceAccount:$RUNTIME_SA --role=roles/secretmanager.secretAccessor >/dev/null
+done
+unset CLIENT_SECRET
+gcloud run services update agent --region $REGION \
+  --update-secrets NUXT_AUTH_SECRET=auth-secret:latest,NUXT_AUTH_GOOGLE_CLIENT_ID=auth-google-client-id:latest,NUXT_AUTH_GOOGLE_CLIENT_SECRET=auth-google-client-secret:latest \
+  --update-env-vars NUXT_PUBLIC_AUTH=true,BETTER_AUTH_URL=$URL
+```
+
+Open **`$URL`** (this exact address) → **Sign in with Google** at the bottom of the sidebar.
+
+## 7. Add your own Genkit tool
 
 Give the agent live weather, from the free [Open-Meteo](https://open-meteo.com) API (no key needed).
 
 ```bash
-cat > server/genkit/tools/weather.ts <<'EOF'
+cat > server/tools/weather.ts <<'EOF'
 import { z } from 'genkit'
-import { ai } from '..'
+import { defineTool } from '../genkit'
 
 /** Current weather for a city, from the free Open-Meteo API (no key needed). */
-export const weather = ai.defineTool(
+export const weather = defineTool(
   {
     name: 'weather',
     description: 'Get the current weather for a city.',
-    inputSchema: z.object({ city: z.string().describe('City name, e.g. "Da Nang"') }),
+    inputSchema: z.object({ city: z.string().describe('City name, e.g. "Da Nang"') })
   },
   async ({ city }) => {
     const geo = await $fetch<{ results?: { name: string, country: string, latitude: number, longitude: number }[] }>(
@@ -276,10 +329,10 @@ export const weather = ai.defineTool(
     const place = geo.results?.[0]
     if (!place) return { error: `City not found: ${city}` }
     const { current } = await $fetch<{ current: Record<string, number> }>('https://api.open-meteo.com/v1/forecast', {
-      query: { latitude: place.latitude, longitude: place.longitude, current: 'temperature_2m,relative_humidity_2m,wind_speed_10m,precipitation' },
+      query: { latitude: place.latitude, longitude: place.longitude, current: 'temperature_2m,relative_humidity_2m,wind_speed_10m,precipitation' }
     })
     return { place: `${place.name}, ${place.country}`, ...current }
-  },
+  }
 )
 EOF
 ```
@@ -287,8 +340,8 @@ EOF
 Register it with the agent:
 
 ```bash
-sed -i "s#^import { shell } from './shell'#import { shell } from './shell'\nimport { weather } from './weather'#; s#^    search,#    search,\n    weather,#" server/genkit/tools/index.ts
-cat server/genkit/tools/index.ts
+sed -i "s#^import { shell } from './shell'#import { shell } from './shell'\nimport { weather } from './weather'#; s#^    calculate,#    calculate,\n    weather,#" server/tools/index.ts
+cat server/tools/index.ts
 ```
 
 Test it locally (Web Preview → port 8080, Dev UI → port 4000), then **Ctrl+C**:
@@ -297,16 +350,16 @@ Test it locally (Web Preview → port 8080, Dev UI → port 4000), then **Ctrl+C
 npm run build && PORT=8080 NUXT_GEMINI_API_KEY=$GEMINI_API_KEY npx -y genkit-cli start --non-interactive -- node .output/server/index.mjs
 ```
 
-Ask: `Should I go to Mỹ Khê beach right now?`. The model decides to call `weather` with `{ "city": "Da Nang" }`.
-In the Dev UI, **Tools → weather** lets you run the tool directly. Ship it:
+Ask: `Should I go to Mỹ Khê beach right now?`. The model decides to call `weather` with `{ "city": "Da Nang" }`,
+and the call shows up as a card in the chat. In the Dev UI, **Tools → weather** runs the tool on its own. Ship it:
 
 ```bash
 gcloud run deploy agent --source . --region $REGION --quiet
 ```
 
-(Settings such as the secret, service account and env vars are kept from the previous revision.)
+(Settings such as the secrets, service account and env vars are kept from the previous revision.)
 
-## 7. (Optional) Deploy on every merged PR with GitHub Actions
+## 8. (Optional) Deploy on every merged PR with GitHub Actions
 
 `.github/workflows/deploy.yml` lints, typechecks, builds the image and deploys to Cloud Run **when a pull request
 is merged into `main`** (or when you click **Run workflow**). GitHub signs in to Google Cloud with
@@ -315,23 +368,24 @@ is merged into `main`** (or when you click **Run workflow**). GitHub signs in to
 1. **Fork** this repository on GitHub, then in your fork open the **Actions** tab and click
    **I understand my workflows, go ahead and enable them**.
 2. In Cloud Shell, run the one-time setup with **your fork's name**. It is safe to re-run, and it reuses what
-   parts 3–4 created:
+   parts 3–6 created. Add `--auth` to be walked through part 6, or `--agent-platform` for part 5:
    ```bash
    bash scripts/cloud-run-setup.sh $PROJECT_ID YOUR_GITHUB_USER/gdg-cloud-da-nang-devfest-2026-genkit $REGION
    ```
    It creates an Artifact Registry repo, an `agent-deployer` service account and a Workload Identity pool,
-   then prints the variables to set.
+   checks Firestore, the bucket and the secrets, then prints the variables to set.
 3. In your fork: **Settings → Secrets and variables → Actions → Variables** → add `GCP_PROJECT`,
-   `GCP_PROJECT_NUMBER` and `GCP_REGION`. If you did part 5, also add `NUXT_GCP_LOCATION`,
-   `NUXT_GCP_ENGINE`, `NUXT_GCP_SHELL_TEMPLATE` and `NUXT_GCP_BROWSER_TEMPLATE` from
-   `cat agent-platform.env`. The workflow sets every env var on each deploy, so missing ones turn features off.
-4. Make a change on a branch and open a PR. For example, on GitHub edit `server/genkit/flows/chat.ts` and
-   change `You are a helpful assistant.` to `You are a friendly guide to Đà Nẵng.` → **Create a new branch** →
-   **Propose changes**.
+   `GCP_PROJECT_NUMBER` and `GCP_REGION`.
+   - If you did part 5, also add `NUXT_GCP_LOCATION`, `NUXT_GCP_ENGINE`, `NUXT_GCP_SHELL_TEMPLATE` and `NUXT_GCP_BROWSER_TEMPLATE`, from `cat agent-platform.env`.
+   - If you did part 6, also add `AUTH_URL` = `$URL`.
+   - The workflow sets every env var on each deploy, so a missing variable turns its feature off.
+4. Make a change on a branch and open a PR. For example, on GitHub edit `server/flows/chat.ts` and
+   change `You are a knowledgeable, friendly AI assistant` to `You are a friendly guide to Đà Nẵng` →
+   **Create a new branch** → **Propose changes**.
    - ⚠️ On the PR page, set **base repository** to **your fork** (GitHub suggests the original repo).
 5. **Merge** the PR → **Actions** → **Deploy**. The URL is in the run summary.
 
-## 8. Clean up
+## 9. Clean up
 
 Easiest, if you created the project only for this codelab:
 
@@ -344,27 +398,36 @@ Or delete just what you created:
 ```bash
 gcloud run services delete agent --region $REGION --quiet
 gcloud artifacts repositories delete cloud-run-source-deploy --location $REGION --quiet
+gcloud firestore databases delete --database="(default)" --quiet
 gcloud secrets delete gemini-api-key --quiet
-gcloud storage rm -r gs://$PROJECT_ID-agent-files                    # part 4 / 7
-gcloud artifacts repositories delete agent --location $REGION --quiet # part 7
+gcloud storage rm -r gs://$PROJECT_ID-agent-files                    # part 4 / 8
+for secret in auth-secret auth-google-client-id auth-google-client-secret; do
+  gcloud secrets delete $secret --quiet                              # part 6
+done
+gcloud artifacts repositories delete agent --location $REGION --quiet # part 8
 # part 5: the Agent Platform engine, with its memories and sandboxes
 source agent-platform.env && curl -X DELETE -H "Authorization: Bearer $(gcloud auth print-access-token)" \
   "https://$NUXT_GCP_LOCATION-aiplatform.googleapis.com/v1beta1/$NUXT_GCP_ENGINE?force=true"
 ```
 
-Also delete your Gemini API key in [AI Studio](https://aistudio.google.com/apikey) if you no longer need it.
+Also delete your Gemini API key in [AI Studio](https://aistudio.google.com/apikey) and the OAuth client in the
+Console if you no longer need them.
 
 ## Troubleshooting
 
 | Symptom | Fix |
 | --- | --- |
-| `search` fails with `429 RESOURCE_EXHAUSTED` | Grounding needs a key from a project with billing. Create one in AI Studio on your billing project, then follow [Change the Gemini API key](#change-the-gemini-api-key) |
-| `503 ... experiencing high demand` | Gemini is busy, try again in a minute. Or use another model: `gcloud run services update agent --region $REGION --update-env-vars NUXT_MODEL=gemini-3.5-flash` |
+| `429 RESOURCE_EXHAUSTED ... FreeTier` | Free-tier keys allow ~20 requests per day per model. Use a key from a billing project ([Change the Gemini API key](#change-the-gemini-api-key)). Meanwhile, pick another model in the prompt: each has its own quota, and the app falls back to another model by itself |
+| `429 ... (limit: 0 ...)` | That model is not available on your key's tier at all (for example the newest models on a free-tier key). Pick another model, or use a billing key |
+| `search` fails with `429` | Google Search grounding needs a key from a project with billing |
+| `503 ... experiencing high demand` | Gemini is busy; the app retries and then falls back to another model. If it persists, pick another model |
+| A canvas takes a minute or two | It writes a whole app; watch it in the **Code** tab. Turn off **Extended thinking** in the `+` menu for faster replies |
+| Chats disappear after a restart | Locally, chats are in memory. On Cloud Run, check `NUXT_GCP_FIRESTORE=(default)` is set and the service account has `roles/datastore.user` |
+| Sign-in: `redirect_uri_mismatch` | Open the app at exactly `$URL` (`https://agent-<number>.<region>.run.app`), the address registered in the OAuth client |
 | Deploy: `PERMISSION_DENIED` from Cloud Build | Re-run the `roles/run.builder` command in part 3 and wait a minute |
 | Deploy: `allUsers ... permitted customer` (organization policy) | Your organization blocks public services. Deploy without `--allow-unauthenticated`, then `gcloud run services proxy agent --region $REGION --port 8080` and use Web Preview on 8080 |
 | Variables are empty after Cloud Shell reconnects | Paste the blocks from part 1 again |
 | Dev UI shows no flows | Send one chat message in the app first; Genkit loads with the first request |
-| Agent Platform tools don't appear | Check `gcloud run services describe agent --region $REGION --format='yaml(spec.template.spec.containers[0].env)'` lists `NUXT_GCP_ENGINE` |
 | Logs | `gcloud run services logs read agent --region $REGION --limit 50` |
 
 ---
@@ -373,41 +436,43 @@ Also delete your Gemini API key in [AI Studio](https://aistudio.google.com/apike
 
 | Feature | How |
 | --- | --- |
-| Chat | Genkit flow `server/genkit/flows/chat.ts`, streamed as NDJSON from `POST /api/chat` |
-| Web search | `search` tool → Gemini Google Search grounding |
-| Code execution | `python` tool → Agent Platform code execution sandbox (one per chat) |
-| Shell | `shell` tool → Agent Platform shell sandbox (`/exec`) |
-| Computer use | `browse` tool → Playwright over CDP to the Agent Platform computer use sandbox |
+| UI | [Nuxt UI chat template](https://github.com/nuxt-ui-templates/chat): `UChatMessages`, `UChatPrompt`, `UChatTool`, `UChatReasoning`, `UDashboard*` |
+| Streaming | `chat` flow events → AI SDK UI message stream (`createUIMessageStream`) → `useChat` from `@ai-sdk/vue` |
+| Models | `GET /api/models`: Gemini models from the API that support `generateContent`, without TTS, image, robotics and similar |
+| Titles | `title` flow on a small model, in parallel with the first reply, pushed to the browser as a `data-chat-title` part |
+| History | Firestore: `chats/{id}`, with `messages` and `votes` subcollections (`server/utils/store.ts`); in memory locally |
+| Maths | `calculate` tool: mathjs, with functions that could change mathjs itself disabled |
+| Web search | `search` tool: Gemini Google Search grounding, with sources |
+| Canvas | `canvas` tool → `canvas` flow (structured output, streamed as preliminary tool results). The preview runs in an iframe with `sandbox="allow-scripts"` and no `allow-same-origin`, so the generated code cannot reach the app's cookies or API |
+| Canvas self-check | With the computer use sandbox: Playwright renders the page, screenshots it and collects console errors; one automatic fix |
+| Code / shell / browser | Agent Platform sandboxes, one per chat, found again by name after scale to zero |
 | Memory | Agent Platform Memory Bank: recalled into the system prompt, generated after each reply |
-| Files | `save` tool + Python output files → Cloud Storage, downloaded via `/api/files/...` |
-| Voice | Browser → Gemini Live API over WebSocket, using an ephemeral token from `POST /api/voice` |
-| Auth | Better Auth, Google sign-in, stateless (no database). Off by default (`NUXT_PUBLIC_AUTH`) |
+| Files | Uploads and saved files in Cloud Storage under `users/{userId}/`, served by `/api/files/...` to their owner |
+| Voice | Browser → Gemini Live API over WebSocket, with a one-time token from `POST /api/voice` |
+| Resilience | Genkit model middleware: drop empty text parts, `retry` on 503, `fallback` to another model on 503/429 |
+| Auth | Anonymous cookie by default; Better Auth with Google (stateless cookie sessions) when `NUXT_PUBLIC_AUTH=true` |
+| CSRF | API writes must come from the app's own origin (`server/middleware/origin.ts`) |
 
 Each Google Cloud feature turns on when its env vars are set (`server/utils/features.ts`). With only
-`NUXT_GEMINI_API_KEY` you get chat, web search and voice.
+`NUXT_GEMINI_API_KEY` you get chat, models, titles, calculate, canvas, web search and voice, with history in memory.
 
 ### Layout
 
 ```
-app/
-  layouts/default.vue        sidebar (UDashboardGroup/Sidebar) + history
-  pages/index.vue            new chat
-  pages/chat/[id].vue        conversation
-  components/chat/prompt.vue <ChatPrompt>   input + voice + submit
-  components/chat/content.vue <ChatContent> markdown + tool calls
-  components/app/user.vue    <AppUser>      Google sign-in
-  composables/chat.ts        useChat(id)    streaming client
-  composables/chats.ts       useChats()     history (localStorage)
-  composables/voice.ts       useVoice()     Live API audio
-  utils/auth.ts              auth           Better Auth client
+app/                         Nuxt UI chat template (pages, layouts, components, composables)
+  components/chat/tool/      Calculate, Canvas, Code (python/shell/browse/save), Sources cards
+  components/chat/CanvasPanel.vue   preview / code side panel
+  composables/               useModels, useCanvas, useUserSession, useVoice, useFileUpload, ...
 server/
-  api/chat.post.ts  api/voice.post.ts  api/files/[...path].get.ts  api/auth/[...all].ts
-  genkit/index.ts            ai, model()
-  genkit/flows/chat.ts       chat flow
-  genkit/tools/*.ts          search, python, shell, browse, save
-  utils/*.ts                 auth, user, gcp, sandbox, memory, bucket, features
+  genkit/index.ts            ai, model(), defineTool(), middleware, thinking levels
+  flows/                     chat.ts, title.ts, canvas.ts
+  tools/                     calculate, search, canvas, python, shell, browse, save
+  api/chats/[id].post.ts     chat stream (Genkit → AI SDK UI stream), title, persistence
+  api/                       chats CRUD, models, session, upload, files, voice, auth
+  utils/                     store (Firestore), user, messages, models, sandbox, memory, bucket, features
+shared/                      types and the canvas bundler, used by both sides
 scripts/setup.ts             one-time Agent Platform setup
-scripts/cloud-run-setup.sh   one-time GitHub Actions → Cloud Run setup (part 7)
+scripts/cloud-run-setup.sh   one-time GitHub Actions → Cloud Run setup (part 8)
 .github/workflows/deploy.yml merged PR → Cloud Run
 ```
 
@@ -419,7 +484,9 @@ npm install
 npm run dev            # or: npx genkit-cli start -- npm run dev   (Dev UI on :4000)
 ```
 
-`npm run lint`, `npm run typecheck`, `npm run build`.
+`npm run lint`, `npm run typecheck`, `npm run build`. To try Firestore locally, run the emulator
+(`npx firebase-tools emulators:start --only firestore`) and set `FIRESTORE_EMULATOR_HOST=127.0.0.1:8080`,
+`NUXT_GCP_PROJECT=demo-local` and `NUXT_GCP_FIRESTORE=(default)`.
 
 ### GitHub Actions variables
 
@@ -427,15 +494,11 @@ Required: `GCP_PROJECT`, `GCP_PROJECT_NUMBER`, `GCP_REGION`. Optional: `NUXT_GCP
 region, defaults to `GCP_REGION`), `NUXT_GCP_ENGINE`, `NUXT_GCP_SHELL_TEMPLATE`, `NUXT_GCP_BROWSER_TEMPLATE`,
 `NUXT_MODEL`, `NUXT_LIVE_MODEL`, `MAX_INSTANCES` (default 3), and `AUTH_URL` (the service URL) to turn on
 Google sign-in. Sign-in also needs the `auth-secret`, `auth-google-client-id` and `auth-google-client-secret`
-secrets (readable by `agent-runtime`) and `<AUTH_URL>/api/auth/callback/google` as an OAuth redirect URI.
-`scripts/cloud-run-setup.sh ... --agent-platform` (with `AGENT_REGION=us-central1` to pick the engine region)
-also creates the Agent Platform engine and prints its variables.
+secrets (readable by `agent-runtime`); `scripts/cloud-run-setup.sh ... --auth` creates them.
 
 ### Notes
 
-- Chat history is in the browser (localStorage). A chat's sandboxes are named after it (`code:<chatId>`),
-  cached in memory per instance and otherwise looked up through the API, so they survive scale to zero
-  and are shared across instances.
-- `/api/voice` and `/api/chat` are open to any visitor, even with sign-in on. Keep `--max-instances` low or add
+- `/api/voice` and `/api/chat*` are open to any visitor, even with sign-in on. Keep `--max-instances` low or add
   rate limiting before sharing the URL widely.
+- Shared chats (the share button) are readable by anyone with the link; their uploaded files stay private.
 - Live API ephemeral tokens need the Gemini Developer API key, not Vertex AI.

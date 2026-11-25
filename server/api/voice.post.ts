@@ -13,8 +13,8 @@ export default defineEventHandler(async (event) => {
       expireTime: new Date(Date.now() + 30 * MINUTE).toISOString(),
       newSessionExpireTime: new Date(Date.now() + MINUTE).toISOString(),
       liveConnectConstraints: { model: liveModel, config: { responseModalities: [Modality.AUDIO] } },
-      httpOptions: { apiVersion: 'v1alpha' },
-    },
+      httpOptions: { apiVersion: 'v1alpha' }
+    }
   })
   return { token: token.name!, model: liveModel }
 })

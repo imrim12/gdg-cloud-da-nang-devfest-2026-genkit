@@ -86,6 +86,7 @@ jobs:
             echo "NUXT_GCP_PROJECT: '$PROJECT'"
             echo "NUXT_GCP_LOCATION: '$AGENT_REGION'"
             echo "NUXT_GCP_BUCKET: '$PROJECT-agent-files'"
+            echo "NUXT_GCP_FIRESTORE: '(default)'"
             echo "NUXT_GCP_SERVICE_ACCOUNT: '$RUNTIME_SA'"
             for name in NUXT_GCP_ENGINE NUXT_GCP_SHELL_TEMPLATE NUXT_GCP_BROWSER_TEMPLATE NUXT_MODEL NUXT_LIVE_MODEL; do
               if [ -n "${!name}" ]; then echo "$name: '${!name}'"; fi
