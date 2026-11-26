@@ -3,6 +3,8 @@ import { z } from 'zod'
 /** Creates a chat with its first message; the reply is streamed by POST /api/chats/:id. */
 export default defineEventHandler(async (event) => {
   const user = await getUser(event)
+  // No chat without a key to answer it
+  await requireGeminiKey(event)
   const { id, message } = await readValidatedBody(event, z.object({
     id: z.string().uuid(),
     message: userMessageSchema

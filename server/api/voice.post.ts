@@ -4,9 +4,9 @@ const MINUTE = 60_000
 
 /** Mints a single-use ephemeral token so the browser can talk to the Gemini Live API directly. */
 export default defineEventHandler(async (event) => {
-  await getUser(event)
-  const { geminiApiKey, liveModel } = useRuntimeConfig()
-  const client = new GoogleGenAI({ apiKey: geminiApiKey, httpOptions: { apiVersion: 'v1alpha' } })
+  const apiKey = await requireGeminiKey(event)
+  const { liveModel } = useRuntimeConfig()
+  const client = new GoogleGenAI({ apiKey, httpOptions: { apiVersion: 'v1alpha' } })
   const token = await client.authTokens.create({
     config: {
       uses: 1,

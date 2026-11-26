@@ -6,6 +6,22 @@ watch(() => settings.value?.instructions, (value) => {
   instructions.value = value ?? ''
 })
 
+// Bring your own key
+const { data: geminiKey, refresh: refreshKey } = useFetch<{ required: boolean, saved: boolean, hint?: string }>('/api/gemini-key', { key: 'gemini-key', server: false })
+const { keyOpen } = useSignInGate()
+const { fetchSession } = useUserSession()
+const removing = ref(false)
+
+async function removeKey() {
+  removing.value = true
+  try {
+    await $fetch('/api/gemini-key', { method: 'DELETE' })
+    await Promise.all([refreshKey(), fetchSession()])
+  } finally {
+    removing.value = false
+  }
+}
+
 const dirty = computed(() => instructions.value !== (settings.value?.instructions ?? ''))
 const saving = ref(false)
 
@@ -18,6 +34,49 @@ async function save() {
 
 <template>
   <div class="flex flex-col gap-3">
+    <template v-if="geminiKey?.required">
+      <div>
+        <h3 class="font-semibold text-highlighted">
+          Gemini API key
+        </h3>
+        <p class="text-sm text-muted">
+          Your chats run on your own key. It is stored encrypted and never shown again.
+        </p>
+      </div>
+      <div class="flex items-center gap-3 rounded-lg ring ring-default px-3 py-2.5">
+        <UIcon
+          name="i-lucide-key-round"
+          class="size-5 shrink-0 text-muted"
+        />
+        <p class="text-sm flex-1 min-w-0">
+          <template v-if="geminiKey.saved">
+            Saved <span class="font-mono text-muted">{{ geminiKey.hint }}</span>
+          </template>
+          <span
+            v-else
+            class="text-muted"
+          >No key yet</span>
+        </p>
+        <UButton
+          :label="geminiKey.saved ? 'Replace' : 'Add key'"
+          color="neutral"
+          variant="outline"
+          size="sm"
+          @click="keyOpen = true"
+        />
+        <UButton
+          v-if="geminiKey.saved"
+          label="Remove"
+          color="error"
+          variant="ghost"
+          size="sm"
+          :loading="removing"
+          @click="removeKey"
+        />
+      </div>
+      <USeparator class="my-2" />
+    </template>
+
     <div>
       <h3 class="font-semibold text-highlighted">
         Instructions

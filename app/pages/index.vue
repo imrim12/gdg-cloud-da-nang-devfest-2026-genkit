@@ -24,10 +24,11 @@ const {
   clearFiles
 } = useFileUploadWithStatus(chatId)
 
-const { requireSignIn, takePending } = useSignInGate()
+const { requireChatReady, takePending } = useSignInGate()
+const { loggedIn, needsGeminiKey } = useUserSession()
 
 async function createChat(prompt: string) {
-  if (!requireSignIn('to start chatting', prompt)) return
+  if (!requireChatReady('to start chatting', prompt)) return
   input.value = prompt
   loading.value = true
 
@@ -52,13 +53,14 @@ async function createChat(prompt: string) {
   navigateTo(`/chat/${chat?.id}`)
 }
 
-// Back from signing in: send the message typed before
-onMounted(() => {
-  const { loggedIn } = useUserSession()
-  if (!loggedIn.value) return
+// Back from signing in, or a Gemini API key just added: send the message typed before
+function resume() {
+  if (!loggedIn.value || needsGeminiKey.value) return
   const pending = takePending()
   if (pending) createChat(pending)
-})
+}
+onMounted(resume)
+watch(needsGeminiKey, resume)
 
 async function onSubmit() {
   if (uploading.value || (!input.value.trim() && !uploadedFiles.value.length)) return

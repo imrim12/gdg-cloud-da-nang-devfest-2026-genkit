@@ -305,6 +305,11 @@ voice and connectors ask them to sign in with Google first, and the message they
 The API enforces the same rule (`server/middleware/auth.ts`); only chats shared publicly can be read without
 signing in. History, memory and connectors follow people across devices.
 
+**Bring your own key.** With sign-in on, the app stops using its own Gemini key: each person adds their
+own (the app asks the first time they send a message; Settings → General to replace or remove it). The key is
+checked with Gemini, encrypted with `auth-secret` (AES-256-GCM) and stored with their settings in Firestore.
+The deploy workflow no longer mounts `gemini-api-key` once `AUTH_URL` is set.
+
 Google has no command line for creating OAuth clients, so this is the one Console step (2 minutes):
 
 ```bash

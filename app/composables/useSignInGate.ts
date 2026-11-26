@@ -8,22 +8,36 @@ const PENDING_TTL = 30 * 60_000
  * The server enforces the same rule (server/middleware/auth.ts).
  */
 export function useSignInGate() {
-  const { loggedIn, authEnabled } = useUserSession()
+  const { loggedIn, authEnabled, needsGeminiKey } = useUserSession()
   const open = useState('sign-in-open', () => false)
   const reason = useState('sign-in-reason', () => '')
+  /** The "Add your Gemini API key" dialog (bring your own key). */
+  const keyOpen = useState('gemini-key-open', () => false)
+
+  function keep(pending?: string) {
+    if (!pending?.trim()) return
+    try {
+      localStorage.setItem(PENDING_KEY, JSON.stringify({ text: pending, at: Date.now() }))
+    } catch {
+      // Private mode: the message is not kept, the user types it again
+    }
+  }
 
   /** True when the action can go ahead; otherwise opens the sign-in dialog. */
   function requireSignIn(why: string, pending?: string) {
     if (!authEnabled.value || loggedIn.value) return true
-    if (pending?.trim()) {
-      try {
-        localStorage.setItem(PENDING_KEY, JSON.stringify({ text: pending, at: Date.now() }))
-      } catch {
-        // Private mode: the message is not kept, the user types it again
-      }
-    }
+    keep(pending)
     reason.value = why
     open.value = true
+    return false
+  }
+
+  /** Signed in and with a Gemini API key: what talking to Gemini needs. Otherwise asks for what is missing. */
+  function requireChatReady(why: string, pending?: string) {
+    if (!requireSignIn(why, pending)) return false
+    if (!needsGeminiKey.value) return true
+    keep(pending)
+    keyOpen.value = true
     return false
   }
 
@@ -39,5 +53,5 @@ export function useSignInGate() {
     }
   }
 
-  return { open, reason, requireSignIn, takePending }
+  return { open, reason, keyOpen, requireSignIn, requireChatReady, takePending }
 }

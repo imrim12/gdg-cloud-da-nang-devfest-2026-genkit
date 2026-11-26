@@ -201,6 +201,7 @@ defineShortcuts({
 
     <SettingsModal />
     <ModalSignIn />
+    <ModalGeminiKey />
 
     <UDashboardSearch
       v-model:open="searchOpen"
