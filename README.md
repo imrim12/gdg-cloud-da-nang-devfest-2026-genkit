@@ -257,13 +257,14 @@ gcloud iam service-accounts add-iam-policy-binding $RUNTIME_SA \
   --member=serviceAccount:$RUNTIME_SA --role=roles/iam.serviceAccountTokenCreator
 ```
 
-Create the engine (2–5 minutes; needs `npm ci` from part 2). Run it **once**: every run creates a new engine.
+Create the engine (2–5 minutes; it shows how long it has been waiting). It only needs `gcloud`, `curl` and `jq`,
+which Cloud Shell has. Safe to run again: it reuses the engine and templates it already created.
 
 ```bash
-npx -y tsx scripts/setup.ts $PROJECT_ID $AGENT_REGION | tee agent-platform.env
+bash scripts/agent-platform-setup.sh $PROJECT_ID $AGENT_REGION | tee agent-platform.env
 ```
 
-> If it fails with a credentials error, run `gcloud auth application-default login`, then run it again.
+> If it fails with a credentials error, run `gcloud auth login`, then run it again.
 
 Give the app the engine:
 
@@ -294,7 +295,7 @@ Try, in new chats:
 | Import memory | Sends the pasted text to `memories:generate`, so Memory Bank does the extraction, topics and de-duplication |
 
 Memory Bank sorts memories into the topics in `shared/utils/memory.ts`. The app adds them to the engine by
-itself the first time memory is used, so engines created before this feature need nothing extra.
+itself the first time memory is used, so there is nothing to run.
 
 ## 6. (Optional) Sign in with Google
 
@@ -539,7 +540,7 @@ server/
   api/                       chats CRUD, models, session, upload, files, voice, auth
   utils/                     store (Firestore), user, messages, models, sandbox, memory, bucket, features
 shared/                      types and the canvas bundler, used by both sides
-scripts/setup.ts             one-time Agent Platform setup
+scripts/agent-platform-setup.sh  one-time Agent Platform setup
 scripts/cloud-run-setup.sh   one-time GitHub Actions → Cloud Run setup (part 8)
 .github/workflows/deploy.yml merged PR → Cloud Run
 ```

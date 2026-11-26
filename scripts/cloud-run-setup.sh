@@ -6,7 +6,7 @@
 #
 # Run it in Cloud Shell (or anywhere `gcloud` is logged in as a project Owner).
 # --agent-platform also creates the Agent Platform engine (Memory Bank, code/shell/browser
-# sandboxes) with scripts/setup.ts. Only pass it once: each run creates a new engine.
+# sandboxes) with scripts/agent-platform-setup.sh; an existing one is reused.
 # The engine goes in AGENT_REGION (default: region), e.g. AGENT_REGION=us-central1.
 # --auth sets up "Sign in with Google": it walks you through creating the OAuth client (a Console
 # step, Google has no CLI or API for it) and stores its ID and secret in Secret Manager.
@@ -120,8 +120,7 @@ retry gcloud iam service-accounts add-iam-policy-binding "$DEPLOYER_SA" --role r
 VARS=(GCP_PROJECT="$PROJECT" GCP_PROJECT_NUMBER="$NUMBER" GCP_REGION="$REGION")
 if [[ -n $AGENT_PLATFORM ]]; then
   step "Agent Platform engine in $AGENT_REGION (Memory Bank + sandbox templates)"
-  npm ci --ignore-scripts --no-audit --no-fund >/dev/null
-  OUTPUT=$(npx -y tsx scripts/setup.ts "$PROJECT" "$AGENT_REGION")
+  OUTPUT=$(bash "$(dirname "$0")/agent-platform-setup.sh" "$PROJECT" "$AGENT_REGION")
   for name in NUXT_GCP_LOCATION NUXT_GCP_ENGINE NUXT_GCP_SHELL_TEMPLATE NUXT_GCP_BROWSER_TEMPLATE; do
     VARS+=("$(grep "^$name=" <<<"$OUTPUT")")
   done
