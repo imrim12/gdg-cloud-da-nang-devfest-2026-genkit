@@ -1,5 +1,5 @@
 <script setup lang="ts">
-const { data, connectors, status, connecting, connect, setEnabled, disconnect } = useConnectors()
+const { data, connectors, status, connecting, connect, setEnabled, disconnect, refresh } = useConnectors()
 const { signIn } = useUserSession()
 const toast = useToast()
 
@@ -27,7 +27,17 @@ async function remove(connector: ConnectorInfo) {
     </p>
 
     <UAlert
-      v-if="data && !data.available"
+      v-if="status === 'error'"
+      class="mt-3"
+      color="error"
+      variant="subtle"
+      icon="i-lucide-circle-alert"
+      title="Could not load connectors"
+      description="The server returned an error. Check the Cloud Run logs, then try again."
+      :actions="[{ label: 'Try again', color: 'neutral', variant: 'outline', onClick: () => refresh() }]"
+    />
+    <UAlert
+      v-else-if="data && !data.available"
       class="mt-3"
       color="neutral"
       variant="subtle"

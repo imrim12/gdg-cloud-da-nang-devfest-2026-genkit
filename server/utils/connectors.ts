@@ -65,8 +65,9 @@ export function redirectUri(event: H3Event) {
   return `${base.replace(/\/$/, '')}/api/connectors/callback`
 }
 
-export async function listConnectors(userId: string): Promise<ConnectorInfo[]> {
-  const connections = new Map((await useStore().listConnections(userId)).map(c => [c.connectorId, c]))
+/** The catalog with the user's connections; without a user (not signed in), just the catalog. */
+export async function listConnectors(userId?: string): Promise<ConnectorInfo[]> {
+  const connections = new Map((userId ? await useStore().listConnections(userId) : []).map(c => [c.connectorId, c]))
   return CONNECTORS.map(({ scopes: _scopes, ...c }) => {
     const connection = connections.get(c.id)
     return {
