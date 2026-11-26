@@ -293,11 +293,8 @@ Try, in new chats:
 | Assistant's memory | Lists memories by topic (`memories:retrieve`), edits them (`create`, `patch`, `delete`), or applies a request in plain words with the `memoryEdit` flow |
 | Import memory | Sends the pasted text to `memories:generate`, so Memory Bank does the extraction, topics and de-duplication |
 
-Engines created by `setup.ts` come with the memory topics. For an engine created before, add them once:
-
-```bash
-npx -y tsx scripts/memory-topics.ts $(grep '^NUXT_GCP_ENGINE=' agent-platform.env | cut -d= -f2)
-```
+Memory Bank sorts memories into the topics in `shared/utils/memory.ts`. The app adds them to the engine by
+itself the first time memory is used, so engines created before this feature need nothing extra.
 
 ## 6. (Optional) Sign in with Google
 
