@@ -6,7 +6,7 @@
  * memory manager uses as sections (shared/utils/memory.ts). People can also add, edit and delete
  * memories directly (create, patch, delete).
  */
-import { MEMORY_SECTIONS, sectionOf, type MemoryTopicId } from '#shared/utils/memory'
+import { CUSTOM_MEMORY_TOPICS, MANAGED_MEMORY_TOPICS, MEMORY_SECTIONS, sectionOf, type MemoryTopicId } from '#shared/utils/memory'
 
 type Turn = { role: 'user' | 'model', text: string }
 
@@ -50,12 +50,39 @@ async function owned(userId: string, id: string) {
   return name
 }
 
+type Engine = { contextSpec?: { memoryBankConfig?: { customizationConfigs?: { memoryTopics?: { customMemoryTopic?: { label: string } }[] }[] } & Record<string, unknown> } }
+
+let topicsReady: Promise<void> | undefined
+
+/**
+ * Makes sure the engine sorts memories into our topics (shared/utils/memory.ts). Runs once per
+ * instance, the first time memory is used: engines created before the topics existed get them,
+ * so nobody has to run a script. Best effort: memory works without topics.
+ */
+function ensureTopics() {
+  topicsReady ??= (async () => {
+    const url = `${platform()}/${useRuntimeConfig().gcp.engine}`
+    const current = await gcp<Engine>(url)
+    const config = current.contextSpec?.memoryBankConfig
+    const labels = new Set(config?.customizationConfigs?.flatMap(c => c.memoryTopics ?? []).map(t => t.customMemoryTopic?.label))
+    if (CUSTOM_MEMORY_TOPICS.every(t => labels.has(t.customMemoryTopic.label))) return
+    await operation(`${url}?updateMask=contextSpec.memoryBankConfig.customizationConfigs`, {
+      contextSpec: { memoryBankConfig: { ...config, customizationConfigs: [{ memoryTopics: [...MANAGED_MEMORY_TOPICS, ...CUSTOM_MEMORY_TOPICS] }] } }
+    }, 'PATCH')
+    console.log('memory topics added to the engine')
+  })().catch((error) => {
+    console.error('adding memory topics to the engine failed (memory still works, without the custom topics)', error)
+  })
+  return topicsReady
+}
+
 /** Above this many memories, a chat gets the most relevant ones instead of all of them. */
 const ALL_IN_PROMPT = 60
 
 export const memory = {
   /** All of the user's memories (up to 500), newest first. */
   async list(userId: string): Promise<MemoryItem[]> {
+    await ensureTopics()
     const memories: Memory[] = []
     let pageToken: string | undefined
     do {
@@ -106,6 +133,7 @@ export const memory = {
 
   /** Extracts and consolidates facts from a chat turn in the background (a long-running operation). */
   async remember(userId: string, turns: Turn[]) {
+    await ensureTopics()
     await gcp(`${engine()}/memories:generate`, {
       scope: scope(userId),
       directContentsSource: {
@@ -119,6 +147,7 @@ export const memory = {
    * them into topics and merges them with existing memories; this waits for the result.
    */
   async import(userId: string, text: string) {
+    await ensureTopics()
     const result = await operation<GenerateResult>(`${engine()}/memories:generate`, {
       scope: scope(userId),
       directContentsSource: {
