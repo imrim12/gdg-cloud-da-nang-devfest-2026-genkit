@@ -1,4 +1,4 @@
-import { Firestore } from '@google-cloud/firestore'
+import { FieldValue, Firestore } from '@google-cloud/firestore'
 
 /** A connector the user authorized. The OAuth tokens are encrypted (server/utils/seal.ts). */
 export interface Connection {
@@ -36,6 +36,9 @@ interface Store {
   listVotes(chatId: string): Promise<Vote[]>
   setVote(vote: Vote): Promise<void>
   deleteVote(chatId: string, messageId: string): Promise<void>
+  /** The user's Gemini API key, encrypted (server/utils/gemini-key.ts). */
+  getGeminiKey(userId: string): Promise<string | undefined>
+  setGeminiKey(userId: string, sealed: string | null): Promise<void>
   getSettings(userId: string): Promise<UserSettings>
   updateSettings(userId: string, patch: Partial<UserSettings>): Promise<UserSettings>
   listConnections(userId: string): Promise<Connection[]>
@@ -56,6 +59,7 @@ function memoryStore(): Store {
   const messages = new Map<string, Map<string, StoredMessage>>()
   const votes = new Map<string, Map<string, Vote>>()
   const settings = new Map<string, UserSettings>()
+  const geminiKeys = new Map<string, string>()
   const connections = new Map<string, Map<string, Connection>>()
   const of = <T>(map: Map<string, Map<string, T>>, chatId: string) => {
     if (!map.has(chatId)) map.set(chatId, new Map())
@@ -95,6 +99,11 @@ function memoryStore(): Store {
     },
     deleteVote: async (chatId, messageId) => {
       of(votes, chatId).delete(messageId)
+    },
+    getGeminiKey: async userId => geminiKeys.get(userId),
+    setGeminiKey: async (userId, sealed) => {
+      if (sealed) geminiKeys.set(userId, sealed)
+      else geminiKeys.delete(userId)
     },
     getSettings: async userId => ({ ...DEFAULT_SETTINGS, ...settings.get(userId) }),
     updateSettings: async (userId, patch) => {
@@ -176,6 +185,12 @@ function firestoreStore(db: Firestore): Store {
     },
     async deleteVote(chatId, messageId) {
       await votes(chatId).doc(messageId).delete()
+    },
+    async getGeminiKey(userId) {
+      return (await users.doc(userId).get()).get('geminiKey') as string | undefined
+    },
+    async setGeminiKey(userId, sealed) {
+      await users.doc(userId).set({ geminiKey: sealed ?? FieldValue.delete() }, { merge: true })
     },
     async getSettings(userId) {
       const data = (await users.doc(userId).get()).get('settings') as Partial<UserSettings> | undefined

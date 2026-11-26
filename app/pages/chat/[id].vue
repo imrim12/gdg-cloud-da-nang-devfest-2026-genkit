@@ -8,6 +8,7 @@ const route = useRoute()
 const toast = useToast()
 const { model } = useModels()
 const { webSearch, reasoning } = useChatSettings()
+const { requireChatReady, keyOpen } = useSignInGate()
 
 const { data } = await useFetch(`/api/chats/${route.params.id}`, {
   key: `chat-${route.params.id}`
@@ -59,6 +60,11 @@ const { messages, status, error, sendMessage, regenerate, stop } = useChat({
     }
   },
   onError(error) {
+    // 428: the user's Gemini API key is missing (removed in another tab, for example)
+    if (error.message.includes('GEMINI_KEY_REQUIRED') || error.message.includes('Add your Gemini API key')) {
+      keyOpen.value = true
+      return
+    }
     let message = error.message
     if (typeof message === 'string' && message[0] === '{') {
       try {
@@ -79,6 +85,7 @@ const { messages, status, error, sendMessage, regenerate, stop } = useChat({
 
 async function handleSubmit(e: Event) {
   e.preventDefault()
+  if (!requireChatReady('to keep chatting')) return
   if ((input.value.trim() || uploadedFiles.value.length) && !uploading.value) {
     const files = uploadedFiles.value.length > 0 ? uploadedFiles.value : undefined
     sendMessage(input.value.trim() ? { text: input.value, files } : { files: files! })

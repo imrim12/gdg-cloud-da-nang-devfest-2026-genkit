@@ -24,6 +24,7 @@ export function useSettings() {
   }
 
   function show(next: SettingsTab = 'general') {
+    if (!useSignInGate().requireSignIn('to open settings')) return
     tab.value = next
     open.value = true
   }

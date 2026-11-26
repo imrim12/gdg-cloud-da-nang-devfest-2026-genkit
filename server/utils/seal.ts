@@ -1,6 +1,9 @@
 import { createCipheriv, createDecipheriv, createHash, randomBytes } from 'node:crypto'
 
-/** AES-256-GCM with a key derived from NUXT_AUTH_SECRET: OAuth tokens and state are encrypted at rest. */
+/**
+ * AES-256-GCM with a key derived from NUXT_AUTH_SECRET (Better Auth's secret): connector OAuth
+ * tokens, users' Gemini API keys and OAuth state are encrypted at rest.
+ */
 const key = () => createHash('sha256').update(`connectors:${useRuntimeConfig().auth.secret}`).digest()
 
 export function seal(value: unknown): string {

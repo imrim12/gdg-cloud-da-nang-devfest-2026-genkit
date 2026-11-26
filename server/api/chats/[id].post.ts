@@ -75,6 +75,7 @@ export default defineEventHandler(async (event) => {
   }).parse)
 
   const chat = await ownChat(id, user.id)
+  const key = await requireGeminiKey(event)
   const store = useStore()
 
   // The first message is saved when the chat is created; later ones arrive here
@@ -95,7 +96,8 @@ export default defineEventHandler(async (event) => {
 
   const stream = createUIMessageStream({
     originalMessages: messages,
-    execute: async ({ writer }) => {
+    // Everything the reply starts (title, chat flow, tools, canvas) calls Gemini with the user's key
+    execute: ({ writer }) => withGeminiKey(key, async () => {
       // `start` carries the reply's message id (injected by the SDK), so the browser and the store agree on it
       writer.write({ type: 'start' })
       writer.write({ type: 'start-step' })
@@ -112,7 +114,7 @@ export default defineEventHandler(async (event) => {
 
       const out = bridge(writer)
       const { stream: events, output } = chatFlow.stream(
-        { chatId: id, userId: user.id, messages: history, model: await resolveModel(model), webSearch, reasoning },
+        { chatId: id, userId: user.id, messages: history, model: await resolveModel(model, key), webSearch, reasoning },
         { abortSignal: abort.signal }
       )
       for await (const flowEvent of events) out.write(flowEvent)
@@ -121,7 +123,7 @@ export default defineEventHandler(async (event) => {
       await titling
       writer.write({ type: 'finish-step' })
       writer.write({ type: 'finish', finishReason: 'stop' })
-    },
+    }),
     onError: (error) => {
       console.error('chat failed', error)
       return error instanceof Error ? error.message : 'Something went wrong.'

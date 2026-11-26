@@ -3,12 +3,19 @@ import type { ModelMiddleware } from 'genkit/model'
 import { fallback, retry } from 'genkit/model/middleware'
 import { googleAI } from '@genkit-ai/google-genai'
 
+// No API key here: each request brings one (server/utils/gemini-key.ts, the useKey middleware)
 export const ai = genkit({
-  plugins: [googleAI({ apiKey: useRuntimeConfig().geminiApiKey || undefined })]
+  plugins: [googleAI({ apiKey: false })]
 })
 
 /** A Gemini model by name, e.g. gemini-3.5-flash. Defaults to the configured chat model. */
 export const model = (name?: string) => googleAI.model(name || useRuntimeConfig().model)
+
+/** Adds the current request's Gemini API key (the user's own, or NUXT_GEMINI_API_KEY locally). */
+const useKey: ModelMiddleware = (request, next) => {
+  const apiKey = geminiKey()
+  return next(apiKey ? { ...request, config: { ...request.config, apiKey } } : request)
+}
 
 /**
  * Gemini 3 streams empty text parts that only carry a thought signature. Replayed in the next
@@ -57,6 +64,7 @@ export function resilient(name?: string) {
   const { model: chat, titleModel } = useRuntimeConfig()
   const others = [...new Set([chat, titleModel])].filter(other => other !== (name || chat))
   return [
+    useKey,
     adaptThinking(name || chat),
     dropEmptyText,
     retry({ maxRetries: 2, statuses: ['UNAVAILABLE'], initialDelayMs: 1500 }),

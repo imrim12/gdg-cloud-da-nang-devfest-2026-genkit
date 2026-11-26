@@ -6,5 +6,6 @@ export default defineEventHandler(async (event) => {
   requireMemory()
   const user = await getUser(event)
   const { request } = await readValidatedBody(event, z.object({ request: z.string().trim().min(1).max(4000) }).parse)
-  return memoryEdit({ userId: user.id, request })
+  const key = await requireGeminiKey(event)
+  return withGeminiKey(key, () => memoryEdit({ userId: user.id, request }))
 })

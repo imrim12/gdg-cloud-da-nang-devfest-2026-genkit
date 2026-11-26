@@ -2,6 +2,9 @@ interface Session {
   auth: boolean
   features: { files: boolean, memory: boolean, connectors: boolean }
   user: { name?: string, email?: string, image?: string | null } | null
+  /** Bring your own key: each user adds their own Gemini API key. */
+  byot: boolean
+  hasGeminiKey: boolean
 }
 
 /** The visitor: anonymous by cookie, or signed in with Google (Better Auth). Loaded by plugins/session.ts. */
@@ -31,6 +34,7 @@ export function useUserSession() {
     loggedIn: computed(() => !!session.value?.user),
     authEnabled: computed(() => !!session.value?.auth),
     canUpload: computed(() => !!session.value?.features.files),
+    needsGeminiKey: computed(() => !!session.value?.byot && !session.value.hasGeminiKey),
     fetchSession,
     signIn,
     signOut

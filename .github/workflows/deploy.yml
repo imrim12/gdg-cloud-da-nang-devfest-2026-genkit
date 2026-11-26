@@ -81,6 +81,8 @@ jobs:
           AUTH_URL: ${{ vars.AUTH_URL }}
         run: |
           RUNTIME_SA=agent-runtime@$PROJECT.iam.gserviceaccount.com
+          # Without sign-in, the app's own Gemini key. With sign-in, users bring their own key (BYOT),
+          # so the app's key is not given to the service at all.
           SECRETS=NUXT_GEMINI_API_KEY=gemini-api-key:latest
           {
             echo "NUXT_GCP_PROJECT: '$PROJECT'"
@@ -97,7 +99,7 @@ jobs:
             fi
           } > env.yaml
           if [ -n "$AUTH_URL" ]; then
-            SECRETS=$SECRETS,NUXT_AUTH_SECRET=auth-secret:latest,NUXT_AUTH_GOOGLE_CLIENT_ID=auth-google-client-id:latest,NUXT_AUTH_GOOGLE_CLIENT_SECRET=auth-google-client-secret:latest
+            SECRETS=NUXT_AUTH_SECRET=auth-secret:latest,NUXT_AUTH_GOOGLE_CLIENT_ID=auth-google-client-id:latest,NUXT_AUTH_GOOGLE_CLIENT_SECRET=auth-google-client-secret:latest
           fi
           gcloud run deploy "$SERVICE" \
             --image "$IMAGE" \
