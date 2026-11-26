@@ -1,7 +1,7 @@
 <script setup lang="ts">
 const props = defineProps<{ part: ToolPart, name: string }>()
 
-const label = computed(() => TOOL_LABELS[props.name] ?? { icon: 'i-lucide-wrench', running: `Running ${props.name}...`, done: `Used ${props.name}` })
+const label = computed(() => toolLabel(props.name))
 const input = computed(() => props.part.input as Record<string, unknown> | undefined)
 const output = computed(() => props.part.output as Record<string, unknown> | undefined)
 
@@ -27,9 +27,9 @@ const result = computed(() => {
   return JSON.stringify(rest.output ?? rest, null, 2)
 })
 
-const suffix = computed(() => typeof input.value?.command === 'string'
-  ? input.value.command
-  : typeof input.value?.url === 'string' ? input.value.url : typeof input.value?.name === 'string' ? input.value.name : undefined)
+const suffix = computed(() => ['command', 'url', 'name', 'query', 'fact', 'subject', 'title']
+  .map(key => input.value?.[key])
+  .find((value): value is string => typeof value === 'string'))
 </script>
 
 <template>

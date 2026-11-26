@@ -7,6 +7,8 @@ const props = defineProps<{
 
 const { canUpload } = useUserSession()
 const { webSearch, reasoning } = useChatSettings()
+const { connectors, setEnabled } = useConnectors()
+const settings = useSettings()
 
 defineShortcuts({
   meta_u: {
@@ -44,6 +46,33 @@ const items = computed<DropdownMenuItem[][]>(() => [[{
     reasoning.value = checked
   },
   onSelect: (e: Event) => e.preventDefault()
+}], [{
+  label: 'Connectors',
+  icon: 'i-lucide-plug',
+  children: [
+    connectors.value.map(connector => connector.connected && !connector.needsReconnect
+      ? {
+          label: connector.name,
+          icon: connector.icon,
+          type: 'checkbox' as const,
+          checked: connector.enabled,
+          ui: { itemLeadingIcon: CONNECTOR_COLORS[connector.id] },
+          onUpdateChecked: (checked: boolean) => setEnabled(connector.id, checked),
+          onSelect: (e: Event) => e.preventDefault()
+        }
+      : {
+          label: connector.name,
+          icon: connector.icon,
+          ui: { itemLeadingIcon: CONNECTOR_COLORS[connector.id] },
+          suffix: connector.needsReconnect ? 'Reconnect' : 'Connect',
+          onSelect: () => settings.show('connectors')
+        }),
+    [{
+      label: 'Manage connectors',
+      icon: 'i-lucide-settings',
+      onSelect: () => settings.show('connectors')
+    }]
+  ]
 }]])
 </script>
 
@@ -51,7 +80,7 @@ const items = computed<DropdownMenuItem[][]>(() => [[{
   <UDropdownMenu
     :items="items"
     :content="{ side: 'top', align: 'start', alignOffset: -4 }"
-    :ui="{ content: 'w-52' }"
+    :ui="{ content: 'w-56' }"
     size="sm"
   >
     <UButton

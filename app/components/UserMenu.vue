@@ -8,6 +8,7 @@ defineProps<{
 const colorMode = useColorMode()
 const appConfig = useAppConfig()
 const { user, signOut } = useUserSession()
+const settings = useSettings()
 
 const colors = ['red', 'orange', 'amber', 'yellow', 'lime', 'green', 'emerald', 'teal', 'cyan', 'sky', 'blue', 'indigo', 'violet', 'purple', 'fuchsia', 'pink', 'rose']
 const neutrals = ['slate', 'gray', 'zinc', 'neutral', 'stone', 'taupe', 'mauve', 'mist', 'olive']
@@ -19,6 +20,18 @@ const items = computed<DropdownMenuItem[][]>(() => ([[{
     src: user.value?.image || undefined,
     alt: user.value?.name || user.value?.email
   }
+}], [{
+  label: 'Settings',
+  icon: 'i-lucide-settings',
+  onSelect: () => settings.show()
+}, {
+  label: 'Memory',
+  icon: 'i-lucide-brain',
+  onSelect: () => settings.show('memory')
+}, {
+  label: 'Connectors',
+  icon: 'i-lucide-plug',
+  onSelect: () => settings.show('connectors')
 }], [{
   label: 'Theme',
   icon: 'i-lucide-palette',

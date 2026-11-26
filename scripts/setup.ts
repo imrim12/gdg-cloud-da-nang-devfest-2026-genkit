@@ -3,12 +3,13 @@
  * and the shell / computer use sandbox templates, then prints the env vars to set.
  *
  *   gcloud auth application-default login
- *   node scripts/setup.ts <project> [location] [model]
+ *   npx -y tsx scripts/setup.ts <project> [location] [model]
  */
 import { GoogleAuth } from 'google-auth-library'
+import { CUSTOM_MEMORY_TOPICS, MANAGED_MEMORY_TOPICS } from '../shared/utils/memory'
 
 const [project, location = 'us-central1', model = 'gemini-3.5-flash-lite'] = process.argv.slice(2)
-if (!project) throw new Error('Usage: node scripts/setup.ts <project> [location] [model]')
+if (!project) throw new Error('Usage: npx -y tsx scripts/setup.ts <project> [location] [model]')
 
 const api = `https://${location}-aiplatform.googleapis.com/v1beta1`
 const client = new GoogleAuth({ scopes: 'https://www.googleapis.com/auth/cloud-platform' })
@@ -31,7 +32,9 @@ const engine = await create(`${api}/projects/${project}/locations/${location}/re
   contextSpec: {
     memoryBankConfig: {
       generationConfig: { model: publisher(model) },
-      similaritySearchConfig: { embeddingModel: publisher('gemini-embedding-001') }
+      similaritySearchConfig: { embeddingModel: publisher('gemini-embedding-001') },
+      // The topics memories are sorted into, shown as sections in the memory manager
+      customizationConfigs: [{ memoryTopics: [...MANAGED_MEMORY_TOPICS, ...CUSTOM_MEMORY_TOPICS] }]
     }
   }
 })

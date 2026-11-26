@@ -9,3 +9,8 @@ export function features() {
     files: !!gcp.bucket
   }
 }
+
+/** Memory routes need Memory Bank (NUXT_GCP_ENGINE). */
+export function requireMemory() {
+  if (!features().memory) throw createError({ statusCode: 503, statusMessage: 'Memory needs Agent Platform Memory Bank (NUXT_GCP_ENGINE)' })
+}

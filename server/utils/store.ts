@@ -1,10 +1,26 @@
 import { Firestore } from '@google-cloud/firestore'
 
+/** A connector the user authorized. The OAuth tokens are encrypted (server/utils/seal.ts). */
+export interface Connection {
+  userId: string
+  connectorId: string
+  enabled: boolean
+  /** Encrypted OAuth tokens (access, refresh, expiry). */
+  tokens: string
+  scopes: string[]
+  account?: string
+  /** The redirect URI used to connect: identifies a dynamically registered OAuth client. */
+  redirectUri: string
+  needsReconnect?: boolean
+  connectedAt: string
+}
+
 /**
- * Chats, messages and votes. Firestore when NUXT_GCP_FIRESTORE is set, otherwise in memory
+ * Chats, messages and votes, plus each user's settings and connectors. Firestore when NUXT_GCP_FIRESTORE is set, otherwise in memory
  * (local development; lost on restart).
  *
- * Firestore layout: chats/{chatId} with subcollections messages/{messageId} and votes/{messageId}.
+ * Firestore layout: chats/{chatId} with subcollections messages/{messageId} and votes/{messageId};
+ * users/{userId} (settings) with subcollection connections/{connectorId}.
  * Message parts are stored as JSON: Firestore rejects nested arrays and undefined values.
  */
 interface Store {
@@ -20,6 +36,13 @@ interface Store {
   listVotes(chatId: string): Promise<Vote[]>
   setVote(vote: Vote): Promise<void>
   deleteVote(chatId: string, messageId: string): Promise<void>
+  getSettings(userId: string): Promise<UserSettings>
+  updateSettings(userId: string, patch: Partial<UserSettings>): Promise<UserSettings>
+  listConnections(userId: string): Promise<Connection[]>
+  getConnection(userId: string, connectorId: string): Promise<Connection | undefined>
+  saveConnection(connection: Connection): Promise<void>
+  updateConnection(userId: string, connectorId: string, patch: Partial<Omit<Connection, 'userId' | 'connectorId'>>): Promise<void>
+  deleteConnection(userId: string, connectorId: string): Promise<void>
 }
 
 const newest = (a: Chat, b: Chat) => b.createdAt.localeCompare(a.createdAt)
@@ -32,6 +55,8 @@ function memoryStore(): Store {
   const chats = new Map<string, Chat>()
   const messages = new Map<string, Map<string, StoredMessage>>()
   const votes = new Map<string, Map<string, Vote>>()
+  const settings = new Map<string, UserSettings>()
+  const connections = new Map<string, Map<string, Connection>>()
   const of = <T>(map: Map<string, Map<string, T>>, chatId: string) => {
     if (!map.has(chatId)) map.set(chatId, new Map())
     return map.get(chatId)!
@@ -70,6 +95,24 @@ function memoryStore(): Store {
     },
     deleteVote: async (chatId, messageId) => {
       of(votes, chatId).delete(messageId)
+    },
+    getSettings: async userId => ({ ...DEFAULT_SETTINGS, ...settings.get(userId) }),
+    updateSettings: async (userId, patch) => {
+      const next = { ...DEFAULT_SETTINGS, ...settings.get(userId), ...patch }
+      settings.set(userId, next)
+      return next
+    },
+    listConnections: async userId => [...of(connections, userId).values()],
+    getConnection: async (userId, connectorId) => of(connections, userId).get(connectorId),
+    saveConnection: async (connection) => {
+      of(connections, connection.userId).set(connection.connectorId, connection)
+    },
+    updateConnection: async (userId, connectorId, patch) => {
+      const existing = of(connections, userId).get(connectorId)
+      if (existing) of(connections, userId).set(connectorId, { ...existing, ...patch })
+    },
+    deleteConnection: async (userId, connectorId) => {
+      of(connections, userId).delete(connectorId)
     }
   }
 }
@@ -78,6 +121,8 @@ function firestoreStore(db: Firestore): Store {
   const chats = db.collection('chats')
   const messages = (chatId: string) => chats.doc(chatId).collection('messages')
   const votes = (chatId: string) => chats.doc(chatId).collection('votes')
+  const users = db.collection('users')
+  const connections = (userId: string) => users.doc(userId).collection('connections')
 
   return {
     async listChats(userId) {
@@ -131,6 +176,29 @@ function firestoreStore(db: Firestore): Store {
     },
     async deleteVote(chatId, messageId) {
       await votes(chatId).doc(messageId).delete()
+    },
+    async getSettings(userId) {
+      const data = (await users.doc(userId).get()).get('settings') as Partial<UserSettings> | undefined
+      return { ...DEFAULT_SETTINGS, ...data }
+    },
+    async updateSettings(userId, patch) {
+      await users.doc(userId).set({ settings: patch }, { merge: true })
+      return this.getSettings(userId)
+    },
+    async listConnections(userId) {
+      return (await connections(userId).get()).docs.map(doc => doc.data() as Connection)
+    },
+    async getConnection(userId, connectorId) {
+      return (await connections(userId).doc(connectorId).get()).data() as Connection | undefined
+    },
+    async saveConnection(connection) {
+      await connections(connection.userId).doc(connection.connectorId).set(connection)
+    },
+    async updateConnection(userId, connectorId, patch) {
+      await connections(userId).doc(connectorId).update(patch)
+    },
+    async deleteConnection(userId, connectorId) {
+      await connections(userId).doc(connectorId).delete()
     }
   }
 }

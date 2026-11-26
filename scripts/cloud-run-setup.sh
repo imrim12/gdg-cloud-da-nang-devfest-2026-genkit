@@ -141,7 +141,12 @@ the Console (2 minutes), then paste the client ID and secret here:
      https://console.cloud.google.com/auth/clients/create?project=$PROJECT
        Authorized JavaScript origins:  $URL
        Authorized redirect URIs:       $URL/api/auth/callback/google
-     (for local development also add http://localhost:3000 and http://localhost:3000/api/auth/callback/google)
+                                       $URL/api/connectors/callback
+     (for local development also add http://localhost:3000, http://localhost:3000/api/auth/callback/google
+      and http://localhost:3000/api/connectors/callback)
+  3. For connectors (Gmail, Drive, Docs, Sheets), while the app is unverified: Audience > Test users >
+     add the Google accounts that will connect them.
+     https://console.cloud.google.com/auth/audience?project=$PROJECT
 
 EOM
   read -rp "Client ID: " CLIENT_ID
@@ -155,6 +160,13 @@ EOM
     put_secret auth-secret "$(openssl rand -base64 32)"
   fi
   VARS+=("AUTH_URL=$URL")
+
+  step "Connectors: Google Workspace APIs and their MCP servers"
+  # Each product needs its API and its MCP service. The MCP servers are in Developer Preview: if
+  # enabling them fails, join the Google Workspace Developer Preview Program, then run this again.
+  gcloud services enable gmail.googleapis.com drive.googleapis.com docs.googleapis.com sheets.googleapis.com
+  gcloud services enable gmailmcp.googleapis.com drivemcp.googleapis.com docsmcp.googleapis.com sheetsmcp.googleapis.com ||
+    echo "Could not enable the Workspace MCP services (Developer Preview). Connectors stay off until they are enabled." >&2
 fi
 
 step "Done. Set these GitHub repository variables (Settings > Secrets and variables > Actions > Variables)"
