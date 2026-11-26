@@ -3,6 +3,20 @@ import type { DropdownMenuItem } from '@nuxt/ui'
 
 const { loggedIn, authEnabled, signIn } = useUserSession()
 const { renameChat, deleteChat } = useChatActions()
+const settings = useSettings()
+const { listen, onConnected } = useConnectors()
+const route = useRoute()
+
+// Connecting in a popup reports back with postMessage; a full-page redirect comes back with a query
+onMounted(() => {
+  listen()
+  const { settings: tab, connected, connectorError } = route.query
+  if (tab === 'connectors' || tab === 'memory' || tab === 'general') {
+    settings.show(tab)
+    if (connected || connectorError) onConnected(connected as string | undefined, connectorError as string | undefined)
+    navigateTo({ query: {} }, { replace: true })
+  }
+})
 
 const sidebarOpen = ref(false)
 const searchOpen = ref(false)
@@ -160,17 +174,32 @@ defineShortcuts({
           v-if="loggedIn"
           :collapsed="collapsed"
         />
-        <UButton
-          v-else-if="authEnabled"
-          :label="collapsed ? '' : 'Sign in with Google'"
-          icon="i-simple-icons-google"
-          color="neutral"
-          variant="ghost"
-          class="w-full"
-          @click="signIn"
-        />
+        <div
+          v-else
+          class="flex flex-col gap-1 w-full"
+        >
+          <UButton
+            :label="collapsed ? '' : 'Settings'"
+            icon="i-lucide-settings"
+            color="neutral"
+            variant="ghost"
+            class="w-full"
+            @click="settings.show()"
+          />
+          <UButton
+            v-if="authEnabled"
+            :label="collapsed ? '' : 'Sign in with Google'"
+            icon="i-simple-icons-google"
+            color="neutral"
+            variant="ghost"
+            class="w-full"
+            @click="signIn"
+          />
+        </div>
       </template>
     </UDashboardSidebar>
+
+    <SettingsModal />
 
     <UDashboardSearch
       v-model:open="searchOpen"

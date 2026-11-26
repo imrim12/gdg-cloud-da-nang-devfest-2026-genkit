@@ -10,6 +10,9 @@ and every step is copy/paste. What you get:
 - **History** in Firestore: sidebar, search, rename, delete, share, edit, regenerate and votes. Titles are written by a Genkit flow.
 - **Tools:** exact maths (`calculate`), web search, files, plus Python, shell and a browser when Agent Platform is enabled
 - **Canvas:** ask for an app or page, watch the code being written, then use it live in a side panel
+- **Memory** like Claude's: learns from chats with Agent Platform **Memory Bank**, searches your earlier chats,
+  and has a memory manager to view, add, edit, delete or import memories; plus custom instructions
+- **Connectors**: Gmail, Google Drive, Docs and Sheets through Google's remote **MCP** servers, with standard MCP OAuth
 - **Voice mode** with the Gemini Live API, and optional **Sign in with Google**
 
 **Stack:** Nuxt 4 + [Nuxt UI chat template](https://ui.nuxt.com/templates) · Genkit (flows, tools, middleware) ·
@@ -20,7 +23,8 @@ Agent Platform (Memory Bank, sandboxes) · GitHub Actions
 Browser (Nuxt UI + AI SDK) ──stream──▶ Cloud Run: Nuxt server + Genkit flows ──▶ Gemini API
    │                                        │   chat · title · canvas         (Google Search grounding)
    │                                        ├─▶ Firestore (chats)      ├─▶ Cloud Storage (files)
-   │                                        └─▶ Agent Platform (Memory Bank, Python / shell / browser sandboxes)
+   │                                        ├─▶ Agent Platform (Memory Bank, Python / shell / browser sandboxes)
+   │                                        └─▶ Google Workspace MCP servers (Gmail, Drive, Docs, Sheets; OAuth)
    └──voice (WebSocket, one-time token)──▶ Gemini Live API
 ```
 
@@ -33,6 +37,7 @@ Browser (Nuxt UI + AI SDK) ──stream──▶ Cloud Run: Nuxt server + Genkit
 | [4. Files on Cloud Storage](#4-optional-files-on-cloud-storage) (optional) | Uploads and the `save` tool | 3 min |
 | [5. Memory, Python, shell, browser](#5-optional-memory-python-shell-and-browser-with-agent-platform) (optional) | Agent Platform tools, canvas self-check | 10 min |
 | [6. Sign in with Google](#6-optional-sign-in-with-google) (optional) | History across devices | 5 min |
+| [6b. Connectors](#6b-optional-connectors-gmail-drive-docs-sheets-over-mcp) (optional) | Gmail, Drive, Docs, Sheets over MCP | 5 min |
 | [7. Add your own tool](#7-add-your-own-genkit-tool) | A `weather` tool | 5 min |
 | [8. Deploy on every merged PR](#8-optional-deploy-on-every-merged-pr-with-github-actions) (optional) | GitHub Actions CI/CD | 10 min |
 | [9. Clean up](#9-clean-up) | No surprise bills | 2 min |
@@ -125,7 +130,11 @@ Stop it with **Ctrl+C** before continuing.
 | `server/flows/chat.ts` | The agent: `ai.generateStream({ tools, maxTurns })`, streaming text, thoughts, tool calls and results |
 | `server/flows/title.ts` | A short title from the first message, with structured output (`output: { schema }`) |
 | `server/flows/canvas.ts` | Writes a web app as structured output, streams it, and self-checks it in a sandbox browser when available |
-| `server/tools/*.ts` | `calculate` (mathjs), `search` (Google Search grounding), `canvas`, `python`, `shell`, `browse`, `save` |
+| `server/flows/memory.ts` | `memoryEdit`: turns "I moved to Hà Nội" into memory edits, with structured output |
+| `server/tools/*.ts` | `calculate` (mathjs), `search` (Google Search grounding), `canvas`, `python`, `shell`, `browse`, `save`, `search_chats` / `recent_chats` (earlier chats), `memory` |
+| `server/utils/memory.ts` | Memory Bank: list, recall, create, edit, delete, generate (learn from a turn) and import |
+| `server/utils/mcp.ts` | A small MCP client: Streamable HTTP, and the MCP authorization flow (discovery, PKCE, refresh) |
+| `server/utils/connectors.ts` | The Google connector catalog, per-user tokens, and MCP tools as Genkit `dynamicTool`s |
 | `server/api/chats/[id].post.ts` | Runs the chat flow and turns its events into the AI SDK stream that the Nuxt UI chat components render |
 
 ## 3. Deploy to Cloud Run
@@ -266,9 +275,29 @@ gcloud run services update agent --region $REGION \
 Try, in new chats:
 
 - `Remember that my favourite food is mì Quảng`, then in a **new chat**: `What should I eat for lunch?`
+- **Settings → Memory → Open**: the memory manager. Memory Bank sorts memories into topics (Profile, Preferences,
+  Skills & interests, Projects...). Edit or delete one, add your own, or type `I moved to Hà Nội` in
+  *Tell the assistant what to change*.
+- **Settings → Memory → Start import**: copy the prompt into ChatGPT or Gemini, paste the answer back, and
+  Memory Bank extracts the facts and merges them with what it already knows.
 - `Use Python to plot y = sin(x) * x and give me the PNG`
 - `Use the shell: what OS and CPU are you running on?`
 - `Browse to developers.google.com/community/gdg and tell me what's on the page`
+
+**Memory, like Claude's** (Settings → Memory):
+
+| Setting | How it works |
+| --- | --- |
+| Search and reference chats | The agent gets `search_chats` and `recent_chats` tools over your own history (works without Agent Platform) |
+| Generate memory from chats | After each turn, `memories:generate` extracts and consolidates facts in the background; new chats start with them |
+| Assistant's memory | Lists memories by topic (`memories:retrieve`), edits them (`create`, `patch`, `delete`), or applies a request in plain words with the `memoryEdit` flow |
+| Import memory | Sends the pasted text to `memories:generate`, so Memory Bank does the extraction, topics and de-duplication |
+
+Engines created by `setup.ts` come with the memory topics. For an engine created before, add them once:
+
+```bash
+npx -y tsx scripts/memory-topics.ts $(grep '^NUXT_GCP_ENGINE=' agent-platform.env | cut -d= -f2)
+```
 
 ## 6. (Optional) Sign in with Google
 
@@ -306,6 +335,48 @@ gcloud run services update agent --region $REGION \
 ```
 
 Open **`$URL`** (this exact address) → **Sign in with Google** at the bottom of the sidebar.
+
+## 6b. (Optional) Connectors: Gmail, Drive, Docs, Sheets over MCP
+
+Google runs remote **MCP servers** for Workspace (`gmailmcp.googleapis.com`, `drivemcp`, `docsmcp`, `sheetsmcp`).
+The app connects to them with the standard **MCP authorization** flow:
+
+1. It reads the server's Protected Resource Metadata (`/.well-known/oauth-protected-resource/mcp/v1`), which
+   names `accounts.google.com` as the authorization server, then that server's metadata.
+2. Google has no dynamic client registration, so the app uses its own OAuth client from part 6 (the MCP spec
+   allows a pre-registered client). Servers that support registration get a client automatically.
+3. Authorization code with **PKCE** in a popup, asking only for the scopes the connector needs. Tokens are
+   encrypted in Firestore and refreshed when they expire; disconnecting revokes them.
+4. In chats, each enabled connector's tools become Genkit tools (`gmail_search_threads`, `drive_read_file_content`...).
+   Turn them on or off in the prompt's `+` menu → **Connectors**.
+
+Needs part 6 (Sign in with Google). Enable each product's API and its MCP service:
+
+```bash
+gcloud services enable gmail.googleapis.com drive.googleapis.com docs.googleapis.com sheets.googleapis.com
+gcloud services enable gmailmcp.googleapis.com drivemcp.googleapis.com docsmcp.googleapis.com sheetsmcp.googleapis.com
+```
+
+> The Workspace MCP servers are in **Developer Preview**. If the second command fails, join the
+> [Google Workspace Developer Preview Program](https://developers.google.com/workspace/preview) and run it again.
+
+In the Console, on your OAuth client:
+
+```bash
+echo "Client:     https://console.cloud.google.com/auth/clients?project=$PROJECT_ID"
+echo "Redirect:   $URL/api/connectors/callback"
+echo "Test users: https://console.cloud.google.com/auth/audience?project=$PROJECT_ID"
+```
+
+1. **Clients** → your client → add the **Redirect** under *Authorized redirect URIs* → **Save**.
+2. **Audience → Test users**: add the Google accounts that will connect. Gmail and Drive scopes are *restricted*,
+   so until Google verifies the app only test users can grant them (and see an "unverified app" screen).
+
+No redeploy needed. Open **Settings → Connectors → Connect**, then try:
+
+- `Summarize my unread emails from today and draft a reply to the most urgent one`
+- `Find my DevFest slides in Drive and list the speakers`
+- `Read the "Budget 2026" sheet and chart spending by month` (with canvas)
 
 ## 7. Add your own Genkit tool
 

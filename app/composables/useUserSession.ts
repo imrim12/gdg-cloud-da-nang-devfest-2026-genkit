@@ -1,6 +1,6 @@
 interface Session {
   auth: boolean
-  features: { files: boolean }
+  features: { files: boolean, memory: boolean, connectors: boolean }
   user: { name?: string, email?: string, image?: string | null } | null
 }
 

@@ -65,7 +65,9 @@ export default defineNuxtConfig({
 
   icon: {
     clientBundle: {
-      scan: true
+      scan: true,
+      // Connector icons come from the server (server/utils/connectors.ts), so the scan misses them
+      icons: ['logos:google-gmail', 'logos:google-drive', 'simple-icons:googledocs', 'simple-icons:googlesheets']
     }
   }
 })
