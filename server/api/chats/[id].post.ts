@@ -13,6 +13,8 @@ function bridge(writer: UIMessageStreamWriter) {
   let count = 0
   // Tool calls waiting for their result, by tool name, for progress updates
   const pending = new Map<string, string>()
+  // Tool calls already sent to the browser
+  const announced = new Set<string>()
   const close = () => {
     if (open) writer.write({ type: `${open.type}-end`, id: open.id })
     open = undefined
@@ -35,6 +37,7 @@ function bridge(writer: UIMessageStreamWriter) {
         case 'tool':
           close()
           pending.set(event.name, event.ref)
+          announced.add(event.ref)
           return writer.write({ type: 'tool-input-available', toolCallId: event.ref, toolName: event.name, input: event.input })
         case 'progress': {
           const toolCallId = pending.get(event.name)
@@ -43,6 +46,10 @@ function bridge(writer: UIMessageStreamWriter) {
         }
         case 'result': {
           close()
+          // A tool call made by a fallback model is not streamed, only its result: announce it first
+          if (!announced.has(event.ref)) {
+            writer.write({ type: 'tool-input-available', toolCallId: event.ref, toolName: event.name, input: {} })
+          }
           pending.delete(event.name)
           const error = (event.output as { error?: unknown } | null)?.error
           return writer.write(typeof error === 'string'

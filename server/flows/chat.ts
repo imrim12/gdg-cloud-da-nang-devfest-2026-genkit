@@ -70,22 +70,33 @@ export const chat = ai.defineFlow(
       abortSignal
     })
 
+    // Text streamed since the last tool call, to spot a final answer that was not streamed
+    let streamed = ''
     for await (const chunk of stream) {
       for (const part of chunk.content) {
         if (part.reasoning) sendChunk({ type: 'reasoning', text: part.reasoning })
-        else if (part.text) sendChunk({ type: 'text', text: part.text })
+        else if (part.text) {
+          streamed += part.text
+          sendChunk({ type: 'text', text: part.text })
+        }
         if (part.toolRequest) {
           const { ref, name, input } = part.toolRequest
           sendChunk({ type: 'tool', ref: ref ?? name, name, input })
         }
         if (part.toolResponse) {
           const { ref, name, output } = part.toolResponse
+          streamed = ''
           sendChunk({ type: 'result', ref: ref ?? name, name, output })
         }
       }
     }
 
     const { text } = await response
+    // The fallback middleware answers without streaming (e.g. when the chosen model's quota is
+    // used up): send whatever part of the final answer did not arrive as chunks.
+    if (text && text !== streamed) {
+      sendChunk({ type: 'text', text: text.startsWith(streamed) ? text.slice(streamed.length) : `\n\n${text}` })
+    }
     // Awaited, not fire-and-forget: Cloud Run throttles CPU once the response ends. It only starts
     // a long-running operation, so it is quick.
     if (features().memory && query) {
