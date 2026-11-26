@@ -9,14 +9,17 @@ const { canUpload } = useUserSession()
 const { webSearch, reasoning } = useChatSettings()
 const { connectors, setEnabled } = useConnectors()
 const settings = useSettings()
+const { requireSignIn } = useSignInGate()
+
+function pickFiles() {
+  if (requireSignIn('to attach files')) props.open()
+}
 
 defineShortcuts({
   meta_u: {
     usingInput: true,
     handler: () => {
-      if (canUpload.value) {
-        props.open()
-      }
+      if (canUpload.value) pickFiles()
     }
   }
 })
@@ -27,7 +30,7 @@ const items = computed<DropdownMenuItem[][]>(() => [[{
   kbds: ['meta', 'U'],
   disabled: !canUpload.value,
   description: canUpload.value ? undefined : 'Needs a Cloud Storage bucket',
-  onSelect: () => props.open()
+  onSelect: pickFiles
 }], [{
   label: 'Web search',
   icon: 'i-lucide-globe',

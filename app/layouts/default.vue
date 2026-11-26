@@ -200,6 +200,7 @@ defineShortcuts({
     </UDashboardSidebar>
 
     <SettingsModal />
+    <ModalSignIn />
 
     <UDashboardSearch
       v-model:open="searchOpen"

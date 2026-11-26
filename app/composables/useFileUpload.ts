@@ -45,6 +45,7 @@ export function useFileUploadWithStatus(chatId: string, queue?: Ref<ChatPromptQu
   }
 
   async function uploadFiles(newFiles: File[]) {
+    if (!useSignInGate().requireSignIn('to attach files')) return
     if (!canUpload.value) {
       toast.add({ description: 'File uploads need a Cloud Storage bucket.', icon: 'i-lucide-alert-circle', color: 'warning' })
       return

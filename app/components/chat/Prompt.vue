@@ -41,7 +41,10 @@ const placeholder = computed(() => {
 // The microphone replaces the send button while the prompt is empty, like ChatGPT
 const canTalk = computed(() => voice.status.value !== 'idle' || (props.status === 'ready' && !input.value.trim() && !files.value.length))
 
+const { requireSignIn } = useSignInGate()
+
 async function talk() {
+  if (voice.status.value === 'idle' && !requireSignIn('to use voice mode')) return
   try {
     await voice.toggle()
   } catch (error) {

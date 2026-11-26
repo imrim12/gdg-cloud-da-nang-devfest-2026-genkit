@@ -24,7 +24,10 @@ const {
   clearFiles
 } = useFileUploadWithStatus(chatId)
 
+const { requireSignIn, takePending } = useSignInGate()
+
 async function createChat(prompt: string) {
+  if (!requireSignIn('to start chatting', prompt)) return
   input.value = prompt
   loading.value = true
 
@@ -48,6 +51,14 @@ async function createChat(prompt: string) {
   refreshNuxtData('chats')
   navigateTo(`/chat/${chat?.id}`)
 }
+
+// Back from signing in: send the message typed before
+onMounted(() => {
+  const { loggedIn } = useUserSession()
+  if (!loggedIn.value) return
+  const pending = takePending()
+  if (pending) createChat(pending)
+})
 
 async function onSubmit() {
   if (uploading.value || (!input.value.trim() && !uploadedFiles.value.length)) return

@@ -299,8 +299,11 @@ itself the first time memory is used, so there is nothing to run.
 
 ## 6. (Optional) Sign in with Google
 
-Visitors are anonymous by default, identified by a cookie. With sign-in, history follows people across
-devices; chats made before signing in move to the account.
+Without sign-in, visitors are anonymous, identified by a cookie. With sign-in turned on, the app is for
+signed-in users: visitors can look around and type, but sending a message, opening settings, attaching files,
+voice and connectors ask them to sign in with Google first, and the message they typed is sent once they have.
+The API enforces the same rule (`server/middleware/auth.ts`); only chats shared publicly can be read without
+signing in. History, memory and connectors follow people across devices.
 
 Google has no command line for creating OAuth clients, so this is the one Console step (2 minutes):
 
