@@ -79,8 +79,12 @@ export default defineEventHandler(async (event) => {
   }
 
   const history = await toGenkitMessages(messages, user.id)
+  // Stop the model when the browser goes away (Stop button, closed tab). Not the request's `close`
+  // event: Node emits it once the body has been read, which would cancel every reply.
   const abort = new AbortController()
-  event.node.req.on('close', () => abort.abort())
+  event.node.res.on('close', () => {
+    if (!event.node.res.writableFinished) abort.abort()
+  })
 
   const stream = createUIMessageStream({
     originalMessages: messages,
@@ -117,7 +121,7 @@ export default defineEventHandler(async (event) => {
     },
     onEnd: async ({ messages: all, isAborted }) => {
       const reply = all.at(-1)
-      if (reply?.role !== 'assistant' || !reply.parts.length) return
+      if (reply?.role !== 'assistant' || !reply.parts.some(part => part.type !== 'step-start')) return
       await store.saveMessages(id, [{ id: reply.id, role: 'assistant', parts: reply.parts }])
         .catch(error => console.error(`saving reply failed${isAborted ? ' (aborted)' : ''}`, error))
     }
