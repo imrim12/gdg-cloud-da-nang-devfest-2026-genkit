@@ -28,7 +28,7 @@ export const search = defineTool(
     inputSchema: z.object({ query: z.string() })
   },
   async ({ query }) => {
-    const response = await ai.generate({ model: model(), prompt: query, config: { googleSearch: true }, use: resilient() })
+    const response = await ai.generate({ model: model(), prompt: query, config: { googleSearch: {} }, use: resilient() })
     return { answer: response.text, sources: sources(response) }
   }
 )
