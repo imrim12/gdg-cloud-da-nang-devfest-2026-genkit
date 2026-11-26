@@ -4,6 +4,6 @@ export default defineEventHandler(async (event) => {
   return {
     available: connectorsAvailable(),
     signedIn: user.signedIn,
-    connectors: user.signedIn ? await listConnectors(user.id) : await listConnectors('')
+    connectors: await listConnectors(user.signedIn ? user.id : undefined)
   }
 })
